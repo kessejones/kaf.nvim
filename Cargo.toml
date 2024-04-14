@@ -1,0 +1,12 @@
+[package]
+name = "kaf"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "kaf"
+crate-type = ["cdylib"]
+
+[dependencies]
+kafka = "0.10.0"
+mlua = { version = "0.9.7", features = ["lua51", "module", "macros"] }

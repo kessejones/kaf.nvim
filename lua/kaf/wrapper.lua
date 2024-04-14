@@ -12,7 +12,7 @@ function M.list_topics()
 
     local topics = {}
     for _, topic in ipairs(output) do
-        local topic_name = topic:match("^%a+")
+        local topic_name = topic:match("^[%w|%-|%_]+")
         table.insert(topics, topic_name)
     end
 

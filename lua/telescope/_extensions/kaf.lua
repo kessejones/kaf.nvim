@@ -8,12 +8,14 @@ local action_set = require("telescope.actions.set")
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 
+local lib = require("kaf.lib")
+
 local ask_confirmation = function(question)
     return vim.fn.input(question .. "[y/n]: ") == "y"
 end
 
 local function topics_finder()
-    local topics = require("kaf.wrapper").list_topics()
+    local topics = lib.get_topics({})
     return require("telescope.finders").new_table({
         results = topics,
     })
@@ -124,5 +126,6 @@ return telescope.register_extension({
     exports = {
         list_topics = picker_list_topics,
         list_clusters = picker_list_clusters,
+        list_connections = require("telescope._extensions.connections").picker_list_connections,
     },
 })

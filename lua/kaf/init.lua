@@ -1,29 +1,16 @@
-local themes = require("telescope.themes")
-
 local M = {}
+
+_G.kaf_cache = {
+    topics = {},
+    selected_topic = nil,
+}
 
 function M.setup(opts)
     opts = opts or {}
 
-    vim.keymap.set("n", "<leader>ee", function()
-        local opts = themes.get_dropdown({
-            layout_config = {
-                height = 25,
-                width = 60,
-            },
-        })
-        require("telescope").extensions.kaf.list_topics(opts)
-    end)
+    vim.opt.rtp:prepend(require("kaf.utils.lib").find_lib_path())
 
-    vim.keymap.set("n", "<leader>ef", function()
-        local opts = themes.get_dropdown({
-            layout_config = {
-                height = 25,
-                width = 60,
-            },
-        })
-        require("telescope").extensions.kaf.list_clusters(opts)
-    end)
+    require("kaf.connections").cache_connections()
 end
 
 return M
