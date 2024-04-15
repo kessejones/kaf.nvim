@@ -1,4 +1,5 @@
 use kafka::client::{FetchPartition, KafkaClient};
+use kafka::producer::{Producer, Record};
 use mlua::prelude::*;
 use mlua::Error;
 
@@ -27,10 +28,10 @@ fn topic_messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaTable<'a>
     //     Err(_) => 1024 * 1024,
     // };
 
-    // let offset_value: i64 = match opts.get("offset_value") {
-    //     Ok(offset_value) => offset_value,
-    //     Err(_) => 10,
-    // };
+    let offset_value: i64 = match opts.get("offset_value") {
+        Ok(offset_value) => offset_value,
+        Err(_) => 10,
+    };
 
     client.load_metadata_all().unwrap();
 
@@ -38,9 +39,13 @@ fn topic_messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaTable<'a>
         .fetch_topic_offsets(topic_name.as_str(), kafka::consumer::FetchOffset::Latest)
         .unwrap();
 
-    let reqs = offsets
-        .iter()
-        .map(|offset| FetchPartition::new(topic_name.as_str(), offset.partition, offset.offset));
+    let reqs = offsets.iter().map(|offset| {
+        FetchPartition::new(
+            topic_name.as_str(),
+            offset.partition,
+            0.max(offset.offset - offset_value),
+        )
+    });
 
     let resps = client.fetch_messages(reqs).unwrap();
 
@@ -72,6 +77,31 @@ fn topic_messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaTable<'a>
     Ok(messages_table)
 }
 
+fn produce_message<'a>(_lua: &'a Lua, opts: mlua::Table) -> LuaResult<()> {
+    let value: String = opts.get("value")?;
+    let brokers: Vec<String> = opts.get("brokers")?;
+    let topic_name: String = opts.get("topic_name")?;
+    let key: String = match opts.get("key") {
+        Ok(key) => key,
+        Err(_) => "".to_owned(),
+    };
+
+    let mut client = KafkaClient::new(brokers);
+    client.load_metadata_all().unwrap();
+
+    let mut producer = Producer::from_client(client).create().unwrap();
+    producer
+        .send(&Record {
+            topic: topic_name.as_str(),
+            partition: -1,
+            key,
+            value,
+        })
+        .unwrap();
+
+    Ok(())
+}
+
 // fn create_topic<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<()> {
 //     let mut client = KafkaClient::new(opts.get("brokers")?);
 //     let topic_name = KafkaClient::new(opts.get("topic_name")?);
@@ -86,6 +116,7 @@ pub fn topic<'a>(lua: &'a Lua) -> LuaResult<LuaTable<'a>> {
     exports.set("topics", lua.create_function(topics)?)?;
     // exports.set("create_topic", lua.create_function(create_topic)?)?;
     exports.set("messages", lua.create_function(topic_messages)?)?;
+    exports.set("produce", lua.create_function(produce_message)?)?;
 
     return Ok(exports);
 }

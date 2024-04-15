@@ -70,7 +70,32 @@ function Client:messages()
         error("any topic selected")
     end
 
-    return lib.topic.messages({ brokers = self.brokers, topic_name = self:current_topic() })
+    vim.cmd.doau("User KafFetchingMessages")
+
+    local messages = lib.topic.messages({
+        brokers = self.brokers,
+        topic_name = self:current_topic(),
+    })
+
+    vim.cmd.doau("User KafFetchedMessages")
+    return messages
+end
+
+---@param key string|nil
+---@param value string
+function Client:produce(key, value)
+    if not self:current_topic() then
+        -- TODO: add a better error handling
+        error("any topic selected")
+    end
+
+    lib.topic.produce({
+        brokers = self.brokers,
+        topic_name = self:current_topic(),
+        key = key,
+        value = value,
+    })
+    vim.cmd.doau("User KafProducedMessage")
 end
 
 return Client
