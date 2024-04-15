@@ -1,16 +1,29 @@
 local M = {}
 
-_G.kaf_cache = {
-    topics = {},
-    selected_topic = nil,
-}
+local Manager = require("kaf.manager")
+local Data = require("kaf.data")
+
+---@diagnostic disable-next-line: unused-local
+local manager = nil
 
 function M.setup(opts)
     opts = opts or {}
 
-    vim.opt.rtp:prepend(require("kaf.utils.lib").find_lib_path())
+    local cache = Data.load_cache_file()
+    ---@diagnostic disable-next-line: unused-local
+    manager = Manager.new()
+    manager:add_clients(cache)
 
-    require("kaf.connections").cache_connections()
+    vim.api.nvim_create_autocmd("User", {
+        pattern = { "KafClientSelected", "KafTopicSelected" },
+        callback = function()
+            Data.save_cache_file(manager:all_clients())
+        end,
+    })
+end
+
+function M.manager()
+    return manager
 end
 
 return M
