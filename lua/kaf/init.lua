@@ -15,7 +15,7 @@ function M.setup(opts)
     manager = Manager.new(cache.clients, cache.selected_client)
 
     vim.api.nvim_create_autocmd("User", {
-        pattern = { "KafClientSelected", "KafTopicSelected" },
+        pattern = { "KafClientSelected", "KafTopicSelected", "KafClientRemoved" },
         callback = function()
             Data.save_cache_file(manager.selected_client, manager:all_clients())
         end,

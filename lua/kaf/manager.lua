@@ -1,3 +1,5 @@
+local Client = require("kaf.client")
+
 local Manager = {}
 Manager.__index = Manager
 
@@ -43,6 +45,12 @@ end
 ---@param name string
 function Manager:remove_client(name)
     self.clients[name] = nil
+
+    if self.selected_client == name then
+        self.selected_client = nil
+    end
+
+    vim.cmd.doau("User KafClientRemoved")
 end
 
 ---@return Client[]
@@ -57,6 +65,15 @@ end
 ---@return Client|nil
 function Manager:current_client()
     return self.selected_client and self.clients[self.selected_client]
+end
+
+---@param name string
+---@param brokers string[]
+---@return Client|nil
+function Manager:create_client(name, brokers)
+    local client = Client.new(name, brokers)
+    self:add_client(client)
+    return client
 end
 
 return Manager
