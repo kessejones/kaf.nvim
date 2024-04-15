@@ -11,13 +11,13 @@ function M.setup(opts)
 
     local cache = Data.load_cache_file()
     ---@diagnostic disable-next-line: unused-local
-    manager = Manager.new()
-    manager:add_clients(cache)
+    ---@diagnostic disable-next-line: undefined-field
+    manager = Manager.new(cache.clients, cache.selected_client)
 
     vim.api.nvim_create_autocmd("User", {
         pattern = { "KafClientSelected", "KafTopicSelected" },
         callback = function()
-            Data.save_cache_file(manager:all_clients())
+            Data.save_cache_file(manager.selected_client, manager:all_clients())
         end,
     })
 end

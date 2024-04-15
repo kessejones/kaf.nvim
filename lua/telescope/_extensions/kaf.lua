@@ -7,5 +7,6 @@ return telescope.register_extension({
     exports = {
         topics = require("kaf.integrations.telescope.topics"),
         clients = require("kaf.integrations.telescope.clients"),
+        messages = require("kaf.integrations.telescope.messages"),
     },
 })

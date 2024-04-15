@@ -40,8 +40,13 @@ fn topic_messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaTable<'a>
                     Err(_) => {}
                     Ok(ref data) => {
                         for message in data.messages() {
-                            let message = lua.create_string(message.value)?;
-                            messages_table.set(index, message)?;
+                            let message_data = lua.create_table()?;
+                            message_data.set("key", lua.create_string(message.key)?)?;
+                            message_data.set("offset", message.offset)?;
+                            message_data.set("value", lua.create_string(message.value)?)?;
+
+                            messages_table.set(index, message_data)?;
+
                             index += 1;
                         }
                     }

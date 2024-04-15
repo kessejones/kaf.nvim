@@ -8,12 +8,12 @@ Client.__index = Client
 
 ---@param brokers string[]
 ---@return Client
-function Client.new(name, brokers)
+function Client.new(name, brokers, selected_topic)
     return setmetatable({
         name = name,
         brokers = brokers,
         cache_topics = {},
-        selcted_topic = nil,
+        selected_topic = selected_topic,
         first_load = true,
     }, Client)
 end
@@ -61,6 +61,16 @@ end
 ---@return string|nil
 function Client:current_topic()
     return self.selected_topic
+end
+
+---@return string[]
+function Client:messages()
+    if self.selected_topic == nil then
+        -- TODO: add a better error handling
+        error("any topic selected")
+    end
+
+    return lib.topic.messages({ brokers = self.brokers, topic_name = self:current_topic() })
 end
 
 return Client

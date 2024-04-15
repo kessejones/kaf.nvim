@@ -1,11 +1,18 @@
 local Manager = {}
 Manager.__index = Manager
 
-function Manager.new()
-    return setmetatable({
+function Manager.new(clients, selected_client)
+    clients = clients or {}
+
+    local obj = setmetatable({
         clients = {},
         selected_client = nil,
     }, Manager)
+
+    obj:add_clients(clients)
+    obj.selected_client = selected_client
+
+    return obj
 end
 
 ---@param clients Client[]

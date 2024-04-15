@@ -15,16 +15,19 @@ function Data.load_cache_file()
 
     local data = vim.json.decode(Path:new(cache_file):read())
     local clients = {}
-    for _, item in ipairs(data) do
-        table.insert(clients, Client.new(item.name, item.brokers))
+    for _, item in ipairs(data.clients) do
+        table.insert(clients, Client.new(item.name, item.brokers, item.selected_topic))
     end
-    return clients
+
+    return { clients = clients, selected_client = data.selected_client }
 end
 
+---@param selected_client string|nil
 ---@param clients Client[]
-function Data.save_cache_file(clients)
+function Data.save_cache_file(selected_client, clients)
     local path_file = Path:new(cache_file)
-    path_file:write(vim.json.encode(clients), "w")
+
+    path_file:write(vim.json.encode({ clients = clients, selected_client = selected_client }), "w")
 end
 
 return Data

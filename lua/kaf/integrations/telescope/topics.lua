@@ -11,7 +11,7 @@ local function topics_finder()
 
     local topics = {}
     if client ~= nil then
-        topics = client:topics()
+        topics = client:topics(true)
     end
 
     return require("telescope.finders").new_table({
