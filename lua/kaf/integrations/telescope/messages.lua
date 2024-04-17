@@ -3,6 +3,8 @@ local action_set = require("telescope.actions.set")
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 local previwers = require("telescope.previewers")
+local make_entry = require("telescope.make_entry")
+local entry_display = require("telescope.pickers.entry_display")
 
 local kaf = require("kaf")
 
@@ -10,30 +12,52 @@ local function format_json(text)
     return vim.fn.system(string.format([[echo '%s' | jq]], text))
 end
 
-local function messages_finder()
+local function messages_finder(opts)
+    opts = opts or {}
+
     local manager = kaf.manager()
     local client = manager:current_client()
     local messages = client:messages()
 
+    local displayer = entry_display.create({
+        separator = " ",
+        items = {
+            { width = 10 },
+            { width = 5 },
+            { width = 10 },
+            { width = 5 },
+            { width = 5 },
+            { width = 5 },
+            { width = 5 },
+            { remaining = true },
+        },
+    })
+
+    local make_display = function(entry)
+        local key = vim.trim(entry.key or "")
+        if #key == 0 then
+            key = "NULL"
+        end
+
+        return displayer({
+            { "Partition", "TelescopeResultsField" },
+            { entry.partition, "TelescopeResultsNumber" },
+            { "Offset", "TelescopeResultsField" },
+            { tostring(entry.offset), "TelescopeResultsNumber" },
+            { "Key", "TelescopeResultsField" },
+            { key, "TelescopeResultsIdentifier" },
+            { "Value", "TelescopeResultsField" },
+            { entry.value, "TelescopeResultsIdentifier" },
+        })
+    end
+
     return require("telescope.finders").new_table({
         results = messages,
         entry_maker = function(entry)
-            local key = entry.key
-            if not key or #key == 0 then
-                key = "NULL"
-            end
-
-            return {
-                value = entry.value,
-                display = string.format(
-                    "partition:%d - offset:%d - key:%s - value: %s",
-                    entry.partition,
-                    entry.offset,
-                    key,
-                    entry.value
-                ),
-                ordinal = tostring(entry.offset),
-            }
+            entry.value = entry.value
+            entry.ordinal = tostring(entry.partition)
+            entry.display = make_display
+            return make_entry.set_default_entry_mt(entry, opts)
         end,
     })
 end
