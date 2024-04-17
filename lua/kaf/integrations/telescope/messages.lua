@@ -7,10 +7,7 @@ local make_entry = require("telescope.make_entry")
 local entry_display = require("telescope.pickers.entry_display")
 
 local kaf = require("kaf")
-
-local function format_json(text)
-    return vim.fn.system(string.format([[echo '%s' | jq]], text))
-end
+local config = require("kaf.config")
 
 local function messages_finder(opts)
     opts = opts or {}
@@ -24,20 +21,26 @@ local function messages_finder(opts)
         items = {
             { width = 10 },
             { width = 5 },
-            { width = 10 },
-            { width = 5 },
-            { width = 5 },
+            { width = 6 },
+            { width = 8 },
+            { width = 3 },
             { width = 5 },
             { width = 5 },
             { remaining = true },
         },
     })
 
-    local make_display = function(entry)
-        local key = vim.trim(entry.key or "")
-        if #key == 0 then
-            key = "NULL"
+    local nullable_field = function(value)
+        value = vim.trim(value or "")
+        if #value == 0 then
+            return "NULL"
         end
+        return value
+    end
+
+    local make_display = function(entry)
+        local key = nullable_field(entry.key)
+        local value = nullable_field(entry.value)
 
         return displayer({
             { "Partition", "TelescopeResultsField" },
@@ -47,7 +50,7 @@ local function messages_finder(opts)
             { "Key", "TelescopeResultsField" },
             { key, "TelescopeResultsIdentifier" },
             { "Value", "TelescopeResultsField" },
-            { entry.value, "TelescopeResultsIdentifier" },
+            { value, "TelescopeResultsIdentifier" },
         })
     end
 
@@ -69,14 +72,16 @@ local message_actions = {
 
         local buf = vim.api.nvim_create_buf(true, true)
         vim.cmd.buffer(buf)
-        -- TODO: detect if jq is installed and if content type is json
-        local output = format_json(entry.value)
-        vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(output, "\n"))
+        local lines = config.run_default_formatter(entry.value)
+        vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+        -- TODO: How to detect the filetype?
         vim.bo[buf].filetype = "json"
         vim.bo[buf].modifiable = false
     end,
-    create = function(bufnr) end,
-    delete = function(bufnr) end,
+    refresh = function(bufnr)
+        local current_picker = action_state.get_current_picker(bufnr)
+        current_picker:refresh(messages_finder(), { reset_prompt = true })
+    end,
 }
 
 return function(opts)
@@ -89,9 +94,9 @@ return function(opts)
             previewer = previwers.new_buffer_previewer({
                 title = "Message Data",
                 define_preview = function(self, entry)
-                    -- TODO: detect if jq is installed and if content type is json
-                    local output = format_json(entry.value)
-                    vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, vim.split(output, "\n"))
+                    local lines = config.run_default_formatter(entry.value)
+                    vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
+                    -- TODO: How to detect the filetype?
                     vim.bo[self.state.bufnr].filetype = "json"
                 end,
             }),
@@ -99,8 +104,7 @@ return function(opts)
             attach_mappings = function(_, map)
                 action_set.select:replace(message_actions.select)
 
-                -- map("i", "<c-n>", topic_actions.create)
-                -- map("i", "<c-x>", topic_actions.delete)
+                map("i", "<c-r>", message_actions.refresh)
                 return true
             end,
         })

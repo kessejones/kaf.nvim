@@ -2,6 +2,7 @@ local M = {}
 
 local Manager = require("kaf.manager")
 local Data = require("kaf.data")
+local config = require("kaf.config")
 
 ---@diagnostic disable-next-line: unused-local
 local manager = nil
@@ -29,7 +30,7 @@ function M.setup(opts)
     })
 
     vim.api.nvim_create_autocmd("User", {
-        pattern = { "KafFetchingMessages" },
+        pattern = { "KafFetchedMessages" },
         callback = function()
             require("kaf.integrations.fidget").finish()
         end,
@@ -49,6 +50,8 @@ end
 
 function M.produce(opts)
     opts = opts or {}
+
+    config.setup(opts)
 
     local key = opts.key or nil
     if opts.ask_key then
