@@ -2,10 +2,12 @@ local conf = require("telescope.config").values
 local action_set = require("telescope.actions.set")
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
+local make_entry = require("telescope.make_entry")
+local entry_display = require("telescope.pickers.entry_display")
 
 local kaf = require("kaf")
 
-local function topics_finder()
+local function topics_finder(opts)
     local manager = kaf.manager()
     local client = manager:current_client()
 
@@ -14,21 +16,43 @@ local function topics_finder()
         topics = client:topics(true)
     end
 
+    local displayer = entry_display.create({
+        separator = " ",
+        items = {
+            { width = 20 },
+            { width = 10 },
+            { width = 10 },
+        },
+    })
+
+    local make_display = function(entry)
+        return displayer({
+            { entry.name, "TelescopeResultsIdentifier" },
+            { "Partitions", "TelescopeResultsField" },
+            { tostring(entry.partitions), "TelescopeResultsNumber" },
+        })
+    end
+
     return require("telescope.finders").new_table({
         results = topics,
+        entry_maker = function(entry)
+            entry.value = entry.name
+            entry.ordinal = entry.name
+            entry.display = make_display
+            return make_entry.set_default_entry_mt(entry, opts)
+        end,
     })
 end
 
 local topic_actions = {
     select = function(bufnr)
-        local topic = action_state.get_selected_entry()
-        if not topic then
+        local entry = action_state.get_selected_entry()
+        if not entry then
             return
         end
-        local topic_name = topic[1]
         local manager = kaf.manager()
         local client = manager:current_client()
-        client:select_topic(topic_name)
+        client:select_topic(entry.value.name)
         actions.close(bufnr)
     end,
     create = function(bufnr) end,

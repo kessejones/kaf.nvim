@@ -3,6 +3,10 @@ if lib == nil then
     error("libkaf.so not found")
 end
 
+---@class Topic
+---@filed name string
+---@filed partitions integer
+
 local Client = {}
 Client.__index = Client
 
@@ -18,11 +22,11 @@ function Client.new(name, brokers, selected_topic)
     }, Client)
 end
 
--- TODO: add metadata of topics on result
 ---@param force boolean
----@return string[]
+---@return Topic[]
 function Client:topics(force)
-    if self.first_load or force then
+    -- TODO: maybe we should check a timestamp of cache
+    if self.first_load or force or #self.cache_topics == 0 then
         self.cache_topics = lib.topic.topics({ brokers = self.brokers })
         self.first_load = false
     end
@@ -58,9 +62,14 @@ function Client:select_topic(name)
     vim.cmd.doau("User KafTopicSelected")
 end
 
----@return string|nil
+---@return Topic|nil
 function Client:current_topic()
-    return self.selected_topic
+    for _, topic in ipairs(self.cache_topics) do
+        if topic.name == self.selected_topic then
+            return topic
+        end
+    end
+    return nil
 end
 
 ---@return string[]
@@ -74,7 +83,7 @@ function Client:messages()
 
     local messages = lib.topic.messages({
         brokers = self.brokers,
-        topic_name = self:current_topic(),
+        topic_name = self.selected_topic,
     })
 
     vim.cmd.doau("User KafFetchedMessages")

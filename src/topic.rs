@@ -10,8 +10,12 @@ fn topics<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaTable<'a>> {
     let table_topics = lua.create_table()?;
     let mut index = 1;
     for topic in client.topics().iter() {
+        let topic_data = lua.create_table()?;
         let topic_name = lua.create_string(topic.name())?;
-        table_topics.set(index, topic_name)?;
+        topic_data.set("name", topic_name)?;
+        topic_data.set("partitions", topic.partitions().len())?;
+
+        table_topics.set(index, topic_data)?;
 
         index += 1;
     }

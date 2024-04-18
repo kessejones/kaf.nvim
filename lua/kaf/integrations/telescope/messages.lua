@@ -57,8 +57,7 @@ local function messages_finder(opts)
     return require("telescope.finders").new_table({
         results = messages,
         entry_maker = function(entry)
-            entry.value = entry.value
-            entry.ordinal = tostring(entry.partition)
+            entry.ordinal = entry.value
             entry.display = make_display
             return make_entry.set_default_entry_mt(entry, opts)
         end,
@@ -72,10 +71,9 @@ local message_actions = {
 
         local buf = vim.api.nvim_create_buf(true, true)
         vim.cmd.buffer(buf)
-        local lines = config.run_default_formatter(entry.value)
-        vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-        -- TODO: How to detect the filetype?
-        vim.bo[buf].filetype = "json"
+        local format_result = config.apply_formatter(entry.value)
+        vim.api.nvim_buf_set_lines(buf, 0, -1, false, format_result.text)
+        vim.bo[buf].filetype = format_result.ft
         vim.bo[buf].modifiable = false
     end,
     refresh = function(bufnr)
@@ -94,10 +92,9 @@ return function(opts)
             previewer = previwers.new_buffer_previewer({
                 title = "Message Data",
                 define_preview = function(self, entry)
-                    local lines = config.run_default_formatter(entry.value)
-                    vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
-                    -- TODO: How to detect the filetype?
-                    vim.bo[self.state.bufnr].filetype = "json"
+                    local result_format = config.apply_formatter(entry.value)
+                    vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, result_format.text)
+                    vim.bo[self.state.bufnr].filetype = result_format.ft
                 end,
             }),
             sorter = conf.generic_sorter(opts),
