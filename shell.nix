@@ -4,5 +4,6 @@ with pkgs;
     buildInputs = [
       openssl
       pkg-config
+      cmake
     ];
   }

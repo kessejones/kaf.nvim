@@ -1,0 +1,3 @@
+---@class Topic
+---@filed name string
+---@filed partitions integer

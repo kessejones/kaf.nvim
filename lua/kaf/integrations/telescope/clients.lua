@@ -86,9 +86,12 @@ return function(opts)
             prompt_title = "Kafka Clients",
             finder = clients_finder(),
             previewer = previwers.new_buffer_previewer({
-                title = "Client Data",
+                title = "Client Config",
                 define_preview = function(self, entry)
-                    vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, entry.value.brokers)
+                    local brokers = vim.tbl_map(function(broker)
+                        return " - " .. broker
+                    end, entry.value.brokers)
+                    vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, vim.tbl_flatten({ "Brokers", brokers }))
                 end,
             }),
             sorter = conf.generic_sorter(opts),

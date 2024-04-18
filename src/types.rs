@@ -1,3 +1,4 @@
+use mlua::prelude::LuaValue;
 use mlua::prelude::*;
 use mlua::Error;
 
@@ -16,7 +17,7 @@ pub struct Message {
 }
 
 impl IntoLua<'_> for Message {
-    fn into_lua<'lua>(self, lua: &'lua Lua) -> LuaResult<mlua::prelude::LuaValue<'lua>> {
+    fn into_lua<'lua>(self, lua: &'lua Lua) -> LuaResult<LuaValue<'lua>> {
         let table = lua.create_table()?;
 
         let key = match self.key {
@@ -39,7 +40,7 @@ impl IntoLua<'_> for Message {
 }
 
 impl IntoLua<'_> for Topic {
-    fn into_lua<'lua>(self, lua: &'lua Lua) -> LuaResult<mlua::prelude::LuaValue<'lua>> {
+    fn into_lua<'lua>(self, lua: &'lua Lua) -> LuaResult<LuaValue<'lua>> {
         let table = lua.create_table()?;
 
         let name = lua.create_string(self.name.as_str())?;
@@ -49,21 +50,6 @@ impl IntoLua<'_> for Topic {
 
         Ok(LuaValue::Table(table))
     }
-}
-
-pub fn vec_to_table<'a, T>(lua: &'a mlua::Lua, list: Vec<T>) -> LuaResult<LuaTable<'a>>
-where
-    T: IntoLua<'a> + Clone,
-{
-    let table = lua.create_table()?;
-
-    let mut index = 1;
-    for item in list.iter() {
-        table.set(index, item.clone().into_lua(lua)?)?;
-        index += 1;
-    }
-
-    Ok(table)
 }
 
 pub struct ProducePayload {
@@ -95,5 +81,37 @@ impl FromLua<'_> for ProducePayload {
             key,
             value,
         })
+    }
+}
+
+pub struct KafData<T> {
+    pub data: T,
+}
+
+impl<'a, T: IntoLua<'a>> IntoLua<'a> for KafData<T> {
+    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+        let table = lua.create_table()?;
+
+        let data = self.data.into_lua(lua)?;
+        table.set("data", data)?;
+        table.set("has_error", false)?;
+
+        Ok(LuaValue::Table(table))
+    }
+}
+
+pub struct KafError {
+    pub error: String,
+}
+
+impl<'a> IntoLua<'a> for KafError {
+    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+        let table = lua.create_table()?;
+
+        let error = lua.create_string(self.error.as_str())?;
+        table.set("error", error)?;
+        table.set("has_error", true)?;
+
+        Ok(LuaValue::Table(table))
     }
 }

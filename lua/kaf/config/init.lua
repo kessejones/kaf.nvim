@@ -57,7 +57,7 @@ function M.apply_formatter(text)
     local type = M.detect_type(text)
     local formatter = M.formatter(type)
     if not formatter then
-        return { ft = type, text = text }
+        return { ft = type, text = { text } }
     end
     return { ft = type, text = formatter(text) }
 end

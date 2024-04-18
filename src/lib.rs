@@ -1,17 +1,24 @@
+mod result;
 mod types;
 
 extern crate mlua;
 
+// replace kafka-rust for rdkafka
+// https://docs.rs/rdkafka/0.36.2/rdkafka/
+
 use kafka::client::{FetchPartition, KafkaClient};
 use kafka::producer::{Producer, Record};
 use mlua::prelude::*;
-use mlua::Error;
 
 use crate::types::{Message, Topic};
 
-fn topics<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaTable<'a>> {
+fn topics<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
     let mut client = KafkaClient::new(opts.get("brokers")?);
-    client.load_metadata_all().unwrap();
+
+    match client.load_metadata_all() {
+        Ok(_) => (),
+        Err(e) => return result::with_error(lua, format!("{}", e)),
+    }
 
     let mut topics = vec![];
     for topic in client.topics().iter() {
@@ -21,28 +28,29 @@ fn topics<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaTable<'a>> {
         });
     }
 
-    Ok(types::vec_to_table(lua, topics)?)
+    result::with_data(lua, topics)
 }
 
-fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaTable<'a>> {
+fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
     let mut client = KafkaClient::new(opts.get("brokers")?);
     let topic_name: String = opts.get("topic_name")?;
-
-    // let max_bytes: i32 = match opts.get("max_bytes") {
-    //     Ok(max_bytes) => max_bytes,
-    //     Err(_) => 1024 * 1024,
-    // };
 
     let offset_value: i64 = match opts.get("offset_value") {
         Ok(offset_value) => offset_value,
         Err(_) => 10,
     };
 
-    client.load_metadata_all().unwrap();
+    match client.load_metadata_all() {
+        Ok(_) => (),
+        Err(e) => return result::with_error(lua, e.to_string()),
+    }
 
-    let offsets = client
+    let offsets = match client
         .fetch_topic_offsets(topic_name.as_str(), kafka::consumer::FetchOffset::Latest)
-        .unwrap();
+    {
+        Ok(offsets) => offsets,
+        Err(e) => return result::with_error(lua, e.to_string()),
+    };
 
     let reqs = offsets.iter().map(|offset| {
         FetchPartition::new(
@@ -52,14 +60,17 @@ fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaTable<'a>> {
         )
     });
 
-    let resps = client.fetch_messages(reqs).unwrap();
+    let resps = match client.fetch_messages(reqs) {
+        Ok(resps) => resps,
+        Err(e) => return result::with_error(lua, e.to_string()),
+    };
 
     let mut messages = vec![];
     for resp in resps.iter() {
         for t in resp.topics() {
             for p in t.partitions() {
                 match p.data() {
-                    Err(_) => return Err(Error::RuntimeError("error on read kafka".to_string())),
+                    Err(e) => return result::with_error(lua, e.to_string()),
                     Ok(ref data) => {
                         for message in data.messages() {
                             messages.push(Message {
@@ -78,19 +89,12 @@ fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaTable<'a>> {
         }
     }
 
-    Ok(types::vec_to_table(lua, messages)?)
+    result::with_data(lua, messages)
 }
 
 fn produce_message<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<()> {
     let payload = types::ProducePayload::from_lua(LuaValue::Table(opts), lua)?;
-    // let value: String = opts.get("value")?;
-    // let brokers: Vec<String> = opts.get("brokers")?;
-    // let topic_name: String = opts.get("topic_name")?;
-    // let key: String = match opts.get("key") {
-    //     Ok(key) => key,
-    //     Err(_) => "".to_owned(),
-    // };
-    //
+
     let mut client = KafkaClient::new(payload.brokers);
     client.load_metadata_all().unwrap();
 
@@ -111,11 +115,12 @@ fn produce_message<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<()> {
 }
 
 #[mlua::lua_module]
-fn libkaf(lua: &Lua) -> LuaResult<LuaTable> {
+fn libkaf(lua: &Lua) -> LuaResult<LuaValue> {
     let exports = lua.create_table()?;
 
     exports.set("topics", lua.create_function(topics)?)?;
     exports.set("messages", lua.create_function(messages)?)?;
     exports.set("produce", lua.create_function(produce_message)?)?;
-    Ok(exports)
+
+    Ok(LuaValue::Table(exports))
 }

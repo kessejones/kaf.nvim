@@ -1,8 +1,14 @@
 local Client = require("kaf.client")
 
+---@class Manager
+---@field private clients table<string, Client>
+---@field private selected_client string?
 local Manager = {}
 Manager.__index = Manager
 
+---@param clients Client[]
+---@param selected_client string?
+---@return Manager
 function Manager.new(clients, selected_client)
     clients = clients or {}
 
@@ -74,6 +80,38 @@ function Manager:create_client(name, brokers)
     local client = Client.new(name, brokers)
     self:add_client(client)
     return client
+end
+
+---@return Topic[]
+function Manager:topics(force)
+    local client = self:current_client()
+    if not client then
+        return { has_error = true, error = "No client was selected" }
+    end
+
+    return client:topics(force)
+end
+
+---@return Message[]
+function Manager:messages()
+    local client = self:current_client()
+    if not client then
+        vim.notify("Client not selected")
+        return {}
+    end
+
+    return client:messages()
+end
+
+---@param topic_name string
+function Manager:select_topic(topic_name)
+    local client = self:current_client()
+    if not client then
+        vim.notify("Client not selected")
+        return {}
+    end
+
+    client:select_topic(topic_name)
 end
 
 return Manager

@@ -1,8 +1,12 @@
+require("kaf.message")
+require("kaf.topic")
+
 local M = {}
 
 local Manager = require("kaf.manager")
 local Data = require("kaf.data")
 local config = require("kaf.config")
+local logger = require("kaf.logger")
 
 ---@diagnostic disable-next-line: unused-local
 local manager = nil
@@ -42,6 +46,10 @@ function M.setup(opts)
             require("kaf.integrations.fidget").notify("Produced Message")
         end,
     })
+
+    vim.api.nvim_create_user_command("KafLogs", function()
+        logger.show()
+    end, {})
 end
 
 function M.manager()

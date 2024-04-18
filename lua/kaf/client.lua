@@ -1,12 +1,15 @@
+local logger = require("kaf.logger")
 local lib = require("kaf.artifact").load_lib("libkaf")
 if lib == nil then
     error("libkaf.so not found")
 end
 
----@class Topic
----@filed name string
----@filed partitions integer
-
+---@class Client
+---@field private name string
+---@field private brokers string[]
+---@field private cache_topics string[]
+---@field private selected_topic string?
+---@field private first_load boolean
 local Client = {}
 Client.__index = Client
 
@@ -27,10 +30,15 @@ end
 function Client:topics(force)
     -- TODO: maybe we should check a timestamp of cache
     if self.first_load or force or #self.cache_topics == 0 then
-        self.cache_topics = lib.topics({ brokers = self.brokers })
+        local result = lib.topics({ brokers = self.brokers })
+        if result.has_error then
+            logger.error(result.error)
+            return result
+        end
+        self.cache_topics = result.data
         self.first_load = false
     end
-    return self.cache_topics
+    return { data = self.cache_topics }
 end
 
 ---@return string[]
@@ -46,13 +54,6 @@ end
 ---@param name string
 function Client:delete_topic(name)
     return lib.delete_topic({ brokers = self.brokers }, name)
-end
-
----@param name string
----@param count integer
----@return string[]
-function Client:topic_messages(name, count)
-    return lib.messages({ brokers = self.brokers }, name, count)
 end
 
 ---@param name string|nil
@@ -72,7 +73,7 @@ function Client:current_topic()
     return nil
 end
 
----@return string[]
+---@return Message[]
 function Client:messages()
     if self.selected_topic == nil then
         -- TODO: add a better error handling
@@ -87,6 +88,7 @@ function Client:messages()
     })
 
     vim.cmd.doau("User KafFetchedMessages")
+
     return messages
 end
 

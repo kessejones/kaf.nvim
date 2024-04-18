@@ -8,13 +8,18 @@ local entry_display = require("telescope.pickers.entry_display")
 
 local kaf = require("kaf")
 local config = require("kaf.config")
+local logger = require("kaf.logger")
 
 local function messages_finder(opts)
     opts = opts or {}
 
     local manager = kaf.manager()
-    local client = manager:current_client()
-    local messages = client:messages()
+    local result_messages = manager:messages()
+    if result_messages.has_error then
+        vim.print("Kaf Error: " .. result_messages.error)
+        logger.error(result_messages.error)
+        return
+    end
 
     local displayer = entry_display.create({
         separator = " ",
@@ -22,7 +27,7 @@ local function messages_finder(opts)
             { width = 10 },
             { width = 5 },
             { width = 6 },
-            { width = 8 },
+            { width = 10 },
             { width = 3 },
             { width = 5 },
             { width = 5 },
@@ -55,7 +60,7 @@ local function messages_finder(opts)
     end
 
     return require("telescope.finders").new_table({
-        results = messages,
+        results = result_messages.data,
         entry_maker = function(entry)
             entry.ordinal = entry.value
             entry.display = make_display
@@ -85,10 +90,20 @@ local message_actions = {
 return function(opts)
     opts = opts or {}
 
+    -- TODO: check if we have a topic selected
+    local client = kaf.manager():current_client()
+    if not client then
+        error("client is not selected")
+        return
+    end
+    local topic_name = client.selected_topic
+
+    opts.results_title = string.format("Messages topic: %s ", topic_name)
+
     require("telescope.pickers")
         .new(opts, {
-            prompt_title = "Kafka Messages",
             finder = messages_finder(),
+            prompt_title = "Find messages",
             previewer = previwers.new_buffer_previewer({
                 title = "Message Data",
                 define_preview = function(self, entry)
