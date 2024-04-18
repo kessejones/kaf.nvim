@@ -13,7 +13,7 @@ local function topics_finder(opts)
 
     local topics = {}
     if client ~= nil then
-        topics = client:topics(true)
+        topics = vim.deepcopy(client:topics(true))
     end
 
     local displayer = entry_display.create({
@@ -52,7 +52,7 @@ local topic_actions = {
         end
         local manager = kaf.manager()
         local client = manager:current_client()
-        client:select_topic(entry.value.name)
+        client:select_topic(entry.value)
         actions.close(bufnr)
     end,
     create = function(bufnr) end,

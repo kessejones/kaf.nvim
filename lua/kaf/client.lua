@@ -27,7 +27,7 @@ end
 function Client:topics(force)
     -- TODO: maybe we should check a timestamp of cache
     if self.first_load or force or #self.cache_topics == 0 then
-        self.cache_topics = lib.topic.topics({ brokers = self.brokers })
+        self.cache_topics = lib.topics({ brokers = self.brokers })
         self.first_load = false
     end
     return self.cache_topics
@@ -52,7 +52,7 @@ end
 ---@param count integer
 ---@return string[]
 function Client:topic_messages(name, count)
-    return lib.topic_messages({ brokers = self.brokers }, name, count)
+    return lib.messages({ brokers = self.brokers }, name, count)
 end
 
 ---@param name string|nil
@@ -81,7 +81,7 @@ function Client:messages()
 
     vim.cmd.doau("User KafFetchingMessages")
 
-    local messages = lib.topic.messages({
+    local messages = lib.messages({
         brokers = self.brokers,
         topic_name = self.selected_topic,
     })
@@ -93,14 +93,14 @@ end
 ---@param key string|nil
 ---@param value string
 function Client:produce(key, value)
-    if not self:current_topic() then
+    if not self.selected_topic then
         -- TODO: add a better error handling
         error("any topic selected")
     end
 
-    lib.topic.produce({
+    lib.produce({
         brokers = self.brokers,
-        topic_name = self:current_topic(),
+        topic = self.selected_topic,
         key = key,
         value = value,
     })

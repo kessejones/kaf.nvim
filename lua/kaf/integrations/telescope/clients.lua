@@ -26,11 +26,12 @@ end
 local function clients_finder()
     local manager = kaf.manager()
     local clients = manager:all_clients()
+
     return require("telescope.finders").new_table({
         results = clients,
         entry_maker = function(entry)
             return {
-                value = entry,
+                value = { name = entry.name, brokers = entry.brokers },
                 display = entry.name,
                 ordinal = entry.name,
             }
@@ -44,9 +45,8 @@ local client_actions = {
         if not entry then
             return
         end
-        local client_name = entry.value.name
-        local manager = require("kaf").manager()
-        manager:set_client(client_name)
+        local manager = kaf.manager()
+        manager:set_client(entry.value.name)
         actions.close(bufnr)
     end,
     create = function(bufnr)
