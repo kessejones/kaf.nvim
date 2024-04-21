@@ -1,4 +1,5 @@
 local logger = require("kaf.logger")
+local notify = require("kaf.notify")
 local lib = require("kaf.artifact").load_lib("libkaf")
 if lib == nil then
     error("libkaf.so not found")
@@ -7,7 +8,7 @@ end
 ---@class Client
 ---@field private name string
 ---@field private brokers string[]
----@field private cache_topics string[]
+---@field private cache_topics Topic[]
 ---@field private selected_topic string?
 ---@field private first_load boolean
 local Client = {}
@@ -47,13 +48,30 @@ function Client:cached_topics()
 end
 
 ---@param name string
-function Client:create_topic(name)
-    return lib.create_topic({ brokers = self.brokers }, name)
+function Client:create_topic(name, num_partitions)
+    vim.print(name, num_partitions)
+    local ok, data = pcall(lib.create_topic, { brokers = self.brokers, topic = name, num_partitions = num_partitions })
+    notify.notify(data)
+
+    return ok
 end
 
 ---@param name string
 function Client:delete_topic(name)
-    return lib.delete_topic({ brokers = self.brokers }, name)
+    local ok, data = pcall(lib.delete_topic, { brokers = self.brokers, topic = name })
+
+    if ok then
+        for i, topic in ipairs(self.cache_topics) do
+            if topic.name == name then
+                table.remove(self.cache_topics, i)
+                break
+            end
+        end
+    end
+
+    notify.notify(data)
+
+    return ok
 end
 
 ---@param name string|nil

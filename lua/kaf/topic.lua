@@ -1,3 +1,3 @@
 ---@class Topic
----@filed name string
----@filed partitions integer
+---@field public name string
+---@field public partitions integer

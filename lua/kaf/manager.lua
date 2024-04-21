@@ -114,4 +114,27 @@ function Manager:select_topic(topic_name)
     client:select_topic(topic_name)
 end
 
+---@param topic_name string
+---@param num_partitions integer
+function Manager:create_topic(topic_name, num_partitions)
+    local client = self:current_client()
+    if not client then
+        vim.notify("Client not selected")
+        return {}
+    end
+
+    client:create_topic(topic_name, num_partitions)
+end
+
+---@param topic_name string
+function Manager:delete_topic(topic_name)
+    local client = self:current_client()
+    if not client then
+        vim.notify("Client not selected")
+        return {}
+    end
+
+    return client:delete_topic(topic_name)
+end
+
 return Manager

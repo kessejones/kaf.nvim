@@ -2,9 +2,10 @@ local M = {}
 
 ---@param message string
 ---@return boolean
-function M.confirm(message)
+function M.confirm(message, default)
+    default = default or ""
     local input = vim.fn.input(message)
-    return input == "" or input == "y" or input == "yes"
+    return input == default or input == "y" or input == "yes"
 end
 
 ---@param prompt string

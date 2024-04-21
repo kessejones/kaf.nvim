@@ -4,15 +4,36 @@ local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 local make_entry = require("telescope.make_entry")
 local entry_display = require("telescope.pickers.entry_display")
-local logger = require("kaf.logger")
 
+local logger = require("kaf.logger")
 local kaf = require("kaf")
+local ui = require("kaf.utils.ui")
+local notify = require("kaf.notify")
+
+local function prompt_new_topic()
+    local name = vim.fn.input("Topic name: ")
+    if #name == 0 then
+        return nil
+    end
+
+    local num_partitions = vim.fn.input("Number of partitions [1]: ")
+    if #num_partitions == 0 then
+        num_partitions = 1
+    else
+        num_partitions = tonumber(num_partitions)
+    end
+
+    return {
+        name = name,
+        num_partitions = num_partitions,
+    }
+end
 
 local function topics_finder(opts)
     opts = opts or {}
 
     local manager = kaf.manager()
-    local result_topics = manager:topics()
+    local result_topics = manager:topics(opts.force_refresh)
 
     if result_topics.has_error then
         vim.notify("Kaf Error:" .. result_topics.error)
@@ -58,12 +79,41 @@ local topic_actions = {
             return
         end
         kaf.manager():select_topic(entry.value)
+
+        notify.notify("Topic '" .. entry.value .. "' selected as default")
+
         actions.close(bufnr)
     end,
-    create = function(bufnr) end,
-    delete = function(bufnr) end,
+    create = function(bufnr)
+        local new_topic = prompt_new_topic()
+        if new_topic == nil then
+            vim.notify("Topic creation cancelled")
+            return
+        end
+        kaf.manager():create_topic(new_topic.name, new_topic.num_partitions)
+
+        local current_picker = action_state.get_current_picker(bufnr)
+        current_picker:refresh(topics_finder({ force_refresh = true }), { reset_prompt = true })
+    end,
+    delete = function(bufnr)
+        local entry = action_state.get_selected_entry()
+        if not entry then
+            return
+        end
+
+        if not ui.confirm("Do you want to delete topic " .. entry.value .. "?[N]", "N") then
+            notify.notify("Topic deletion cancelled")
+            return
+        end
+
+        if kaf.manager():delete_topic(entry.value) then
+            local current_picker = action_state.get_current_picker(bufnr)
+            current_picker:refresh(topics_finder({ force_refresh = false }), { reset_prompt = true })
+        end
+    end,
     refresh = function(bufnr)
-        vim.notify("Refreshing topics list")
+        notify.notify("Refreshing topics list")
+
         local current_picker = action_state.get_current_picker(bufnr)
         current_picker:refresh(topics_finder({ force_refresh = true }), { reset_prompt = true })
     end,
@@ -84,8 +134,8 @@ return function(opts)
                 action_set.select:replace(topic_actions.select)
 
                 map("i", "<C-r>", topic_actions.refresh)
-                -- map("i", "<c-n>", topic_actions.create)
-                -- map("i", "<c-x>", topic_actions.delete)
+                map("i", "<C-n>", topic_actions.create)
+                map("i", "<C-x>", topic_actions.delete)
                 return true
             end,
         })

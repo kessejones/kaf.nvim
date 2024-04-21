@@ -1,6 +1,7 @@
+pub mod input;
+
 use mlua::prelude::LuaValue;
 use mlua::prelude::*;
-use mlua::Error;
 
 #[derive(Debug, Clone)]
 pub struct Topic {
@@ -49,38 +50,6 @@ impl IntoLua<'_> for Topic {
         table.set("partitions", self.partitions)?;
 
         Ok(LuaValue::Table(table))
-    }
-}
-
-pub struct ProducePayload {
-    pub brokers: Vec<String>,
-    pub topic: String,
-    pub key: Option<String>,
-    pub value: String,
-}
-
-impl FromLua<'_> for ProducePayload {
-    fn from_lua(value: LuaValue<'_>, _lua: &'_ Lua) -> LuaResult<Self> {
-        let table = match value.as_table() {
-            Some(table) => table,
-            None => return Err(Error::RuntimeError("Invalid table".to_string())),
-        };
-
-        let key = match table.get("key") {
-            Ok(LuaValue::String(key)) => Some(key.to_str()?.to_owned()),
-            _ => None,
-        };
-
-        let topic = table.get("topic")?;
-        let value = table.get("value")?;
-        let brokers = table.get("brokers")?;
-
-        Ok(ProducePayload {
-            brokers,
-            topic,
-            key,
-            value,
-        })
     }
 }
 
