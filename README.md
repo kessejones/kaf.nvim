@@ -1,23 +1,25 @@
-## Kaf cli wrapper for neovim
+## Kaf.nvim
 
-### Todo List
+A plugin for manager kafka topics and messages. (written in rust btw)
 
-#### Topics
+## Getting Started
 
-[ ] Create (with replicas and partitions?)
-[ ] List
-[ ] Delete
+[Neovim 0.9](https://github.com/neovim/neovim/releases/tag/v0.9.5) or higher is required for `kaf.nvim` to work.
 
-[ ] Produce messages (from a buffer)
-[ ] Consume messages (put message body on a buffer)
+### Installation
 
-#### Cluster
+- Using [lazy.nvim](https://github.com/folke/lazy.nvim)
 
-[ ] Add
-[ ] List
-[ ] Choose
-[ ] Delete
+```lua
+return {
+    'kessejones/kaf.nvim',
+    opts = {},
+}
 
-#### Extra
+```
 
-[ ] Integrate all actions on telescope
+## Contributing
+
+All contributions are welcome! Just open a pull request.
+
+Please look at the Issues page to see the current backlog, suggestions, and bugs to work.
