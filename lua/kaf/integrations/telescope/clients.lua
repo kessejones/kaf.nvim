@@ -5,6 +5,7 @@ local action_state = require("telescope.actions.state")
 local ui = require("kaf.utils.ui")
 local previwers = require("telescope.previewers")
 
+local notify = require("kaf.notify")
 local kaf = require("kaf")
 
 local function prompt_new_client()
@@ -20,6 +21,23 @@ local function prompt_new_client()
     return {
         name = name,
         brokers = brokers,
+    }
+end
+
+local function prompt_edit_client(name, brokers)
+    local brokers_str = table.concat(brokers, ", ")
+    local new_brokers =
+        vim.split(vim.fn.input("Brokers list for client " .. name .. " (separete by comma): ", brokers_str), ",")
+    if #brokers == 0 then
+        return nil
+    end
+
+    if table.concat(brokers) == table.concat(new_brokers) then
+        return nil
+    end
+
+    return {
+        brokers = new_brokers,
     }
 end
 
@@ -58,6 +76,22 @@ local client_actions = {
 
         kaf.manager():create_client(new_client.name, new_client.brokers)
 
+        local current_picker = action_state.get_current_picker(bufnr)
+        current_picker:refresh(clients_finder(), { reset_prompt = true })
+    end,
+    edit = function(bufnr)
+        local entry = action_state.get_selected_entry()
+        if not entry then
+            return
+        end
+        local client = kaf.manager():get_client(entry.value.name)
+        local new_data = prompt_edit_client(client.name, client.brokers)
+        if new_data == nil then
+            notify.notify("Client edition canceled")
+            return
+        end
+
+        client:set_brokers(new_data.brokers)
         local current_picker = action_state.get_current_picker(bufnr)
         current_picker:refresh(clients_finder(), { reset_prompt = true })
     end,
@@ -100,6 +134,7 @@ return function(opts)
 
                 map("i", "<c-n>", client_actions.create)
                 map("i", "<c-x>", client_actions.delete)
+                map("i", "<c-e>", client_actions.edit)
                 return true
             end,
         })

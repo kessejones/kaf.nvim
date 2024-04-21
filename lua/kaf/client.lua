@@ -42,6 +42,11 @@ function Client:topics(force)
     return { data = self.cache_topics }
 end
 
+---@param brokers string[]
+function Client:set_brokers(brokers)
+    self.brokers = brokers
+end
+
 ---@return string[]
 function Client:cached_topics()
     return self.cache_topics
