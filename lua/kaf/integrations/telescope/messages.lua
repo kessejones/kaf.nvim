@@ -14,13 +14,7 @@ local function messages_finder(opts)
     opts = opts or {}
 
     local manager = kaf.manager()
-    local result_messages = manager:messages()
-    if result_messages.has_error then
-        vim.print("Kaf Error: " .. result_messages.error)
-        logger.error(result_messages.error)
-        return
-    end
-
+    local messages = manager:messages()
     local displayer = entry_display.create({
         separator = " ",
         items = {
@@ -60,7 +54,7 @@ local function messages_finder(opts)
     end
 
     return require("telescope.finders").new_table({
-        results = result_messages.data,
+        results = messages,
         entry_maker = function(entry)
             entry.ordinal = entry.value
             entry.display = make_display

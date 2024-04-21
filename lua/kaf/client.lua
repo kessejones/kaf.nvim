@@ -31,15 +31,15 @@ end
 function Client:topics(force)
     -- TODO: maybe we should check a timestamp of cache
     if self.first_load or force or #self.cache_topics == 0 then
-        local result = lib.topics({ brokers = self.brokers })
-        if result.has_error then
-            logger.error(result.error)
-            return result
+        local ok, data = pcall(lib.topics, { brokers = self.brokers })
+        if not ok then
+            notify.notify(data)
+            return {}
         end
-        self.cache_topics = result.data
+        self.cache_topics = data
         self.first_load = false
     end
-    return { data = self.cache_topics }
+    return self.cache_topics
 end
 
 ---@param brokers string[]
@@ -99,36 +99,45 @@ end
 ---@return Message[]
 function Client:messages()
     if self.selected_topic == nil then
-        -- TODO: add a better error handling
-        error("any topic selected")
+        notify.notify("No topic selected")
+        return {}
     end
 
     vim.cmd.doau("User KafFetchingMessages")
 
-    local messages = lib.messages({
+    local ok, data = pcall(lib.messages, {
         brokers = self.brokers,
         topic_name = self.selected_topic,
     })
 
+    if not ok then
+        notify.notify(data)
+    end
+
     vim.cmd.doau("User KafFetchedMessages")
 
-    return messages
+    return data
 end
 
 ---@param key string|nil
 ---@param value string
 function Client:produce(key, value)
-    if not self.selected_topic then
-        -- TODO: add a better error handling
-        error("any topic selected")
+    if self.selected_topic == nil then
+        notify.notify("No topic selected")
+        return {}
     end
 
-    lib.produce({
+    local ok, data = pcall(lib.produce, {
         brokers = self.brokers,
         topic = self.selected_topic,
         key = key,
         value = value,
     })
+
+    if not ok then
+        notify.notify(data)
+    end
+
     vim.cmd.doau("User KafProducedMessage")
 end
 

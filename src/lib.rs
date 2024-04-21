@@ -1,4 +1,3 @@
-pub mod result;
 mod types;
 
 #[macro_export]
@@ -11,9 +10,6 @@ macro_rules! kaf_unwrap {
     };
 }
 
-// replace kafka-rust for rdkafka
-// https://docs.rs/rdkafka/0.36.2/rdkafka/
-
 use futures::{self, executor};
 use kafka::client::{FetchPartition, KafkaClient};
 use kafka::producer::{Producer, Record};
@@ -22,7 +18,8 @@ use mlua::prelude::*;
 use rdkafka::admin::AdminClient;
 use rdkafka::config::FromClientConfig;
 
-use crate::types::{Message, Topic};
+use crate::types::output::Topic;
+use crate::types::output::{vec_to_table, Message};
 
 fn topics<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
     let mut client = KafkaClient::new(opts.get("brokers")?);
@@ -37,7 +34,7 @@ fn topics<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
         });
     }
 
-    result::with_data(lua, topics)
+    vec_to_table(lua, topics)
 }
 
 fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
@@ -85,7 +82,7 @@ fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
         }
     }
 
-    result::with_data(lua, messages)
+    vec_to_table(lua, messages)
 }
 
 fn produce_message<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<()> {

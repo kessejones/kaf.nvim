@@ -2,8 +2,6 @@ use mlua::prelude::LuaValue;
 use mlua::prelude::*;
 use mlua::Error;
 
-use crate::kaf_unwrap;
-
 pub struct ProducerData {
     pub brokers: Vec<String>,
     pub topic: String,

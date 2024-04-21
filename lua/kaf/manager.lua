@@ -45,6 +45,8 @@ end
 function Manager:set_client(name)
     self.selected_client = name
 
+    vim.print(self.selected_client)
+
     vim.cmd.doau("User KafClientSelected")
 end
 

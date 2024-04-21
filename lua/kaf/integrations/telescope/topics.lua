@@ -33,16 +33,7 @@ local function topics_finder(opts)
     opts = opts or {}
 
     local manager = kaf.manager()
-    local result_topics = manager:topics(opts.force_refresh)
-
-    if result_topics.has_error then
-        vim.notify("Kaf Error:" .. result_topics.error)
-        logger.error(result_topics.error)
-
-        return
-    end
-
-    local topics = vim.deepcopy(result_topics.data)
+    local topics = vim.deepcopy(manager:topics(opts.force_refresh))
 
     local displayer = entry_display.create({
         separator = " ",

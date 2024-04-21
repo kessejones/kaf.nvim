@@ -43,7 +43,7 @@ end
 
 local function clients_finder()
     local manager = kaf.manager()
-    local clients = manager:all_clients()
+    local clients = vim.deepcopy(manager:all_clients())
 
     return require("telescope.finders").new_table({
         results = clients,
