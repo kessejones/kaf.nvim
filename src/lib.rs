@@ -38,25 +38,21 @@ fn topics<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
 }
 
 fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
-    let mut client = KafkaClient::new(opts.get("brokers")?);
-    let topic_name: String = opts.get("topic_name")?;
-
-    let offset_value: i64 = match opts.get("offset_value") {
-        Ok(offset_value) => offset_value,
-        Err(_) => 10,
-    };
+    let message_data = types::input::MessageData::from_lua(LuaValue::Table(opts), lua)?;
+    let mut client = KafkaClient::new(message_data.brokers);
 
     kaf_unwrap!(client.load_metadata_all());
 
-    let offsets = kaf_unwrap!(
-        client.fetch_topic_offsets(topic_name.as_str(), kafka::consumer::FetchOffset::Latest)
-    );
+    let offsets = kaf_unwrap!(client.fetch_topic_offsets(
+        message_data.topic.as_str(),
+        kafka::consumer::FetchOffset::Latest
+    ));
 
     let reqs = offsets.iter().map(|offset| {
         FetchPartition::new(
-            topic_name.as_str(),
+            message_data.topic.as_str(),
             offset.partition,
-            0.max(offset.offset - offset_value),
+            0.max(offset.offset - message_data.offset),
         )
     });
 

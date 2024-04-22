@@ -20,6 +20,12 @@ pub struct DeleteTopicData {
     pub topic: String,
 }
 
+pub struct MessageData {
+    pub brokers: Vec<String>,
+    pub topic: String,
+    pub offset: i64,
+}
+
 impl FromLua<'_> for ProducerData {
     fn from_lua(value: LuaValue<'_>, _lua: &'_ Lua) -> LuaResult<Self> {
         let table = match value.as_table() {
@@ -75,5 +81,27 @@ impl FromLua<'_> for DeleteTopicData {
         let topic = table.get("topic")?;
 
         Ok(Self { brokers, topic })
+    }
+}
+impl FromLua<'_> for MessageData {
+    fn from_lua(value: LuaValue<'_>, _lua: &'_ Lua) -> LuaResult<Self> {
+        let table = match value.as_table() {
+            Some(table) => table,
+            None => return Err(Error::RuntimeError("Invalid table".to_string())),
+        };
+
+        let brokers = table.get("brokers")?;
+        let topic = table.get("topic")?;
+
+        let offset: i64 = match table.get("offset_value") {
+            Ok(offset) => offset,
+            Err(_) => 10,
+        };
+
+        Ok(Self {
+            brokers,
+            topic,
+            offset,
+        })
     }
 }

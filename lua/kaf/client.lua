@@ -107,7 +107,7 @@ function Client:messages()
 
     local ok, data = pcall(lib.messages, {
         brokers = self.brokers,
-        topic_name = self.selected_topic,
+        topic = self.selected_topic,
     })
 
     if not ok then
