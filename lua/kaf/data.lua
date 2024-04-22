@@ -16,7 +16,7 @@ function Data.load_cache_file()
     local data = vim.json.decode(Path:new(cache_file):read())
     local clients = {}
     for _, item in ipairs(data.clients) do
-        table.insert(clients, Client.new(item.name, item.brokers, item.selected_topic))
+        table.insert(clients, Client.new(item.name, item.brokers, item.selected_topic, item.cache_topics))
     end
 
     return { clients = clients, selected_client = data.selected_client }

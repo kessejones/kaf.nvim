@@ -1,4 +1,7 @@
 local Client = require("kaf.client")
+local event = require("kaf.event")
+local notify = require("kaf.notify")
+local EventType = require("kaf.types").EventType
 
 ---@class Manager
 ---@field private clients table<string, Client>
@@ -45,20 +48,21 @@ end
 function Manager:set_client(name)
     self.selected_client = name
 
-    vim.print(self.selected_client)
-
-    vim.cmd.doau("User KafClientSelected")
+    event.emit(EventType.ClientSelected, self:current_client())
 end
 
 ---@param name string
 function Manager:remove_client(name)
-    self.clients[name] = nil
+    local client = self.clients[name]
+    if client then
+        self.clients[name] = nil
 
-    if self.selected_client == name then
-        self.selected_client = nil
+        if self.selected_client == name then
+            self.selected_client = nil
+        end
+
+        event.emit(EventType.ClientRemoved, client)
     end
-
-    vim.cmd.doau("User KafClientRemoved")
 end
 
 ---@return Client[]
@@ -88,10 +92,14 @@ end
 function Manager:topics(force)
     local client = self:current_client()
     if not client then
-        return { has_error = true, error = "No client was selected" }
+        notify.notify("Client not selected")
+        return {}
     end
 
-    return client:topics(force)
+    event.emit(EventType.FetchingTopics)
+    local topics = client:topics(force)
+    event.emit(EventType.FetchedTopics, { forced = force })
+    return topics
 end
 
 ---@return Message[]
@@ -102,7 +110,11 @@ function Manager:messages()
         return {}
     end
 
-    return client:messages()
+    event.emit(EventType.FetchingMessages)
+    local messages = client:messages()
+    event.emit(EventType.FetchedMessages)
+
+    return messages
 end
 
 ---@param topic_name string
@@ -114,6 +126,7 @@ function Manager:select_topic(topic_name)
     end
 
     client:select_topic(topic_name)
+    event.emit(EventType.TopicSelected)
 end
 
 ---@param topic_name string
@@ -132,11 +145,12 @@ end
 function Manager:delete_topic(topic_name)
     local client = self:current_client()
     if not client then
-        vim.notify("Client not selected")
+        notify.notify("Client not selected")
         return {}
     end
 
-    return client:delete_topic(topic_name)
+    client:delete_topic(topic_name)
+    event.emit(EventType.TopicDeleted)
 end
 
 return Manager

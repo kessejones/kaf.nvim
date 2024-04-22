@@ -5,7 +5,6 @@ local action_state = require("telescope.actions.state")
 local make_entry = require("telescope.make_entry")
 local entry_display = require("telescope.pickers.entry_display")
 
-local logger = require("kaf.logger")
 local kaf = require("kaf")
 local ui = require("kaf.utils.ui")
 local notify = require("kaf.notify")
@@ -33,7 +32,7 @@ local function topics_finder(opts)
     opts = opts or {}
 
     local manager = kaf.manager()
-    local topics = vim.deepcopy(manager:topics(opts.force_refresh))
+    local topics = vim.deepcopy(manager:topics(opts.force_refresh or false))
 
     local displayer = entry_display.create({
         separator = " ",
@@ -118,7 +117,7 @@ return function(opts)
     require("telescope.pickers")
         .new(opts, {
             prompt_title = "Find Topics",
-            finder = topics_finder(),
+            finder = topics_finder(opts),
             previewer = nil,
             sorter = conf.generic_sorter(opts),
             attach_mappings = function(_, map)

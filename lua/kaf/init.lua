@@ -1,11 +1,11 @@
-require("kaf.message")
-require("kaf.topic")
+local EventType = require("kaf.types").EventType
 
 local M = {}
 
 local Manager = require("kaf.manager")
 local Data = require("kaf.data")
 local config = require("kaf.config")
+local event = require("kaf.event")
 local logger = require("kaf.logger")
 
 ---@diagnostic disable-next-line: unused-local
@@ -19,36 +19,43 @@ function M.setup(opts)
     ---@diagnostic disable-next-line: undefined-field
     manager = Manager.new(cache.clients, cache.selected_client)
 
-    vim.api.nvim_create_autocmd("User", {
-        pattern = { "KafClientSelected", "KafTopicSelected", "KafClientRemoved" },
-        callback = function()
+    event.on({
+        EventType.ClientSelected,
+        EventType.TopicSelected,
+        EventType.ClientRemoved,
+        EventType.TopicSelected,
+    }, function()
+        Data.save_cache_file(manager.selected_client, manager:all_clients())
+    end)
+
+    -- save cache file on forced fetch topics
+    event.on(EventType.FetchedTopics, function(e)
+        if e.forced then
             Data.save_cache_file(manager.selected_client, manager:all_clients())
-        end,
-    })
+        end
+    end)
 
-    vim.api.nvim_create_autocmd("User", {
-        pattern = { "KafFetchingMessages" },
-        callback = function()
-            require("kaf.integrations.fidget").progress("Kaf", "Fetching messages")
-        end,
-    })
+    event.on(EventType.FetchingMessages, function()
+        require("kaf.integrations.fidget").progress("Kaf", "Fetching messages")
+    end)
 
-    vim.api.nvim_create_autocmd("User", {
-        pattern = { "KafFetchedMessages" },
-        callback = function()
-            require("kaf.integrations.fidget").finish()
-        end,
-    })
+    event.on(EventType.FetchedMessages, function()
+        require("kaf.integrations.fidget").finish()
+    end)
 
-    vim.api.nvim_create_autocmd("User", {
-        pattern = { "KafProducedMessage" },
-        callback = function()
-            require("kaf.integrations.fidget").notify("Produced Message")
-        end,
-    })
+    event.on(EventType.ProducedMessage, function()
+        require("kaf.integrations.fidget").notify("Produced Message")
+    end)
 
     vim.api.nvim_create_user_command("KafLogs", function()
         logger.show()
+    end, {})
+
+    vim.api.nvim_create_user_command("KafReloadCache", function()
+        cache = Data.load_cache_file()
+        ---@diagnostic disable-next-line: unused-local
+        ---@diagnostic disable-next-line: undefined-field
+        manager = Manager.new(cache.clients, cache.selected_client)
     end, {})
 end
 

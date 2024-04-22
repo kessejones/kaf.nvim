@@ -1,4 +1,3 @@
-local logger = require("kaf.logger")
 local notify = require("kaf.notify")
 local lib = require("kaf.artifact").load_lib("libkaf")
 if lib == nil then
@@ -16,13 +15,12 @@ Client.__index = Client
 
 ---@param brokers string[]
 ---@return Client
-function Client.new(name, brokers, selected_topic)
+function Client.new(name, brokers, selected_topic, topics)
     return setmetatable({
         name = name,
         brokers = brokers,
-        cache_topics = {},
+        cache_topics = topics or {},
         selected_topic = selected_topic,
-        first_load = true,
     }, Client)
 end
 
@@ -30,14 +28,13 @@ end
 ---@return Topic[]
 function Client:topics(force)
     -- TODO: maybe we should check a timestamp of cache
-    if self.first_load or force or #self.cache_topics == 0 then
+    if force or #self.cache_topics == 0 then
         local ok, data = pcall(lib.topics, { brokers = self.brokers })
         if not ok then
             notify.notify(data)
             return {}
         end
         self.cache_topics = data
-        self.first_load = false
     end
     return self.cache_topics
 end
@@ -54,8 +51,8 @@ end
 
 ---@param name string
 function Client:create_topic(name, num_partitions)
-    vim.print(name, num_partitions)
     local ok, data = pcall(lib.create_topic, { brokers = self.brokers, topic = name, num_partitions = num_partitions })
+
     notify.notify(data)
 
     return ok
@@ -82,8 +79,6 @@ end
 ---@param name string|nil
 function Client:select_topic(name)
     self.selected_topic = name
-
-    vim.cmd.doau("User KafTopicSelected")
 end
 
 ---@return Topic|nil
@@ -103,8 +98,6 @@ function Client:messages()
         return {}
     end
 
-    vim.cmd.doau("User KafFetchingMessages")
-
     local ok, data = pcall(lib.messages, {
         brokers = self.brokers,
         topic = self.selected_topic,
@@ -113,8 +106,6 @@ function Client:messages()
     if not ok then
         notify.notify(data)
     end
-
-    vim.cmd.doau("User KafFetchedMessages")
 
     return data
 end
@@ -137,8 +128,6 @@ function Client:produce(key, value)
     if not ok then
         notify.notify(data)
     end
-
-    vim.cmd.doau("User KafProducedMessage")
 end
 
 return Client

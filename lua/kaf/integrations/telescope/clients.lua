@@ -123,9 +123,10 @@ return function(opts)
                 title = "Client Config",
                 define_preview = function(self, entry)
                     local brokers = vim.tbl_map(function(broker)
-                        return " - " .. broker
+                        return "  - " .. broker
                     end, entry.value.brokers)
-                    vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, vim.tbl_flatten({ "Brokers", brokers }))
+                    vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, vim.tbl_flatten({ "Brokers:", brokers }))
+                    vim.bo[self.state.bufnr].filetype = "yaml"
                 end,
             }),
             sorter = conf.generic_sorter(opts),

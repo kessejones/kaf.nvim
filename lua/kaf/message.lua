@@ -1,5 +1,0 @@
----@class Message
----@field public key string?
----@field public partition integer
----@field public offset integer
----@field public value string
