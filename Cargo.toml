@@ -12,3 +12,15 @@ futures = "0.3.30"
 kafka = "0.10.0"
 mlua = { version = "0.9.7", features = ["lua51", "module", "macros"] }
 rdkafka = { version = "0.36.2", features = ["cmake-build"] }
+
+[target.x86_64-apple-darwin]
+rustflags = [
+  "-C", "link-arg=-undefined",
+  "-C", "link-arg=dynamic_lookup",
+]
+
+[target.aarch64-apple-darwin]
+rustflags = [
+  "-C", "link-arg=-undefined",
+  "-C", "link-arg=dynamic_lookup",
+]
