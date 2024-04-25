@@ -2,6 +2,8 @@ local conf = require("telescope.config").values
 local action_set = require("telescope.actions.set")
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
+local entry_display = require("telescope.pickers.entry_display")
+local make_entry = require("telescope.make_entry")
 local ui = require("kaf.utils.ui")
 local previwers = require("telescope.previewers")
 
@@ -41,18 +43,38 @@ local function prompt_edit_client(name, brokers)
     }
 end
 
-local function clients_finder()
+local function clients_finder(opts)
+    opts = opts or {}
+
     local manager = kaf.manager()
     local clients = vim.deepcopy(manager:all_clients())
+
+    local displayer = entry_display.create({
+        separator = " ",
+        items = {
+            { width = 1 },
+            { remaining = true },
+        },
+    })
+
+    local make_display = function(entry)
+        local mark = " "
+        if manager:current_client() ~= nil and entry.name == manager:current_client().name then
+            mark = "*"
+        end
+        return displayer({
+            { mark, "TelescopeResultsField" },
+            { entry.name, "TelescopeResultsIdentifier" },
+        })
+    end
 
     return require("telescope.finders").new_table({
         results = clients,
         entry_maker = function(entry)
-            return {
-                value = { name = entry.name, brokers = entry.brokers },
-                display = entry.name,
-                ordinal = entry.name,
-            }
+            entry.value = { name = entry.name, brokers = entry.brokers }
+            entry.display = make_display
+            entry.ordinal = entry.name
+            return make_entry.set_default_entry_mt(entry, opts)
         end,
     })
 end
