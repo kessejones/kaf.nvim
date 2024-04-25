@@ -33,10 +33,15 @@ local function topics_finder(opts)
 
     local manager = kaf.manager()
     local topics = vim.deepcopy(manager:topics(opts.force_refresh or false))
+    local current_topic = nil
+    if manager:current_client() ~= nil then
+        current_topic = manager:current_client():current_topic().name
+    end
 
     local displayer = entry_display.create({
         separator = " ",
         items = {
+            { width = 1 },
             { width = 80 },
             { width = 10 },
             { width = 10 },
@@ -44,7 +49,12 @@ local function topics_finder(opts)
     })
 
     local make_display = function(entry)
+        local mark = " "
+        if entry.name == current_topic then
+            mark = "*"
+        end
         return displayer({
+            { mark, "TelescopeResultsField" },
             { entry.name, "TelescopeResultsIdentifier" },
             { "Partitions", "TelescopeResultsField" },
             { tostring(entry.partitions), "TelescopeResultsNumber" },
