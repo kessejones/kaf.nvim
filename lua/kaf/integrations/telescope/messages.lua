@@ -64,7 +64,7 @@ local function messages_finder(opts)
 end
 
 local message_actions = {
-    select = function(bufnr)
+    select = vim.schedule_wrap(function(bufnr)
         local entry = action_state.get_selected_entry()
         actions.close(bufnr)
 
@@ -74,7 +74,7 @@ local message_actions = {
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, format_result.text)
         vim.bo[buf].filetype = format_result.ft
         vim.bo[buf].modifiable = false
-    end,
+    end),
     refresh = function(bufnr)
         local current_picker = action_state.get_current_picker(bufnr)
         current_picker:refresh(messages_finder(), { reset_prompt = true })
@@ -100,11 +100,11 @@ return function(opts)
             prompt_title = "Find messages",
             previewer = previwers.new_buffer_previewer({
                 title = "Message Data",
-                define_preview = function(self, entry)
+                define_preview = vim.schedule_wrap(function(self, entry)
                     local result_format = config.apply_formatter(entry.value)
                     vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, result_format.text)
                     vim.bo[self.state.bufnr].filetype = result_format.ft
-                end,
+                end),
             }),
             sorter = conf.generic_sorter(opts),
             attach_mappings = function(_, map)
