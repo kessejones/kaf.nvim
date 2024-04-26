@@ -1,33 +1,13 @@
+local default = require("kaf.config.default")
+
 local M = {}
 
-local type_formatter = setmetatable({
-    json = function(text)
-        local output = vim.fn.system(string.format([[echo '%s' | jq]], text))
-        if vim.v.shell_error ~= 0 then
-            return { text }
-        end
-        return vim.split(output, "\n")
-    end,
-}, {})
+local config = {}
 
-local type_detector = setmetatable({
-    json = function(text)
-        local pattern = "^%s*[%[%{].*[%]%}]%s*$"
-        return string.match(text, pattern) ~= nil
-    end,
-}, {})
-
-local config = {
-    type_formatter = type_formatter,
-    type_detector = type_detector,
-    integrations = {
-        fidget = true,
-    },
-}
-
----TODO: Implement merge options with default config
 function M.setup(opts)
     opts = opts or {}
+
+    config = vim.tbl_extend("force", default, opts)
 end
 
 function M.config()

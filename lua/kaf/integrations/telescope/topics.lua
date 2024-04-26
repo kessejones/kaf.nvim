@@ -5,7 +5,7 @@ local action_state = require("telescope.actions.state")
 local make_entry = require("telescope.make_entry")
 local entry_display = require("telescope.pickers.entry_display")
 
-local kaf = require("kaf")
+local manager = require("kaf.manager")
 local ui = require("kaf.utils.ui")
 local notify = require("kaf.notify")
 
@@ -31,11 +31,10 @@ end
 local function topics_finder(opts)
     opts = opts or {}
 
-    local manager = kaf.manager()
-    local topics = vim.deepcopy(manager:topics(opts.force_refresh or false))
+    local topics = vim.deepcopy(manager.topics(opts.force_refresh or false))
     local current_topic = nil
-    if manager:current_client() ~= nil then
-        current_topic = manager:current_client():current_topic().name
+    if manager.current_client() ~= nil and manager.current_client():current_topic() ~= nil then
+        current_topic = manager.current_client():current_topic().name
     end
 
     local displayer = entry_display.create({
@@ -78,7 +77,7 @@ local topic_actions = {
         if not entry then
             return
         end
-        kaf.manager():select_topic(entry.value)
+        manager.select_topic(entry.value)
 
         notify.notify("Topic '" .. entry.value .. "' selected as default")
 
@@ -90,7 +89,7 @@ local topic_actions = {
             vim.notify("Topic creation cancelled")
             return
         end
-        kaf.manager():create_topic(new_topic.name, new_topic.num_partitions)
+        manager.create_topic(new_topic.name, new_topic.num_partitions)
 
         local current_picker = action_state.get_current_picker(bufnr)
         current_picker:refresh(topics_finder({ force_refresh = true }), { reset_prompt = true })
@@ -106,7 +105,7 @@ local topic_actions = {
             return
         end
 
-        if kaf.manager():delete_topic(entry.value) then
+        if manager.delete_topic(entry.value) then
             local current_picker = action_state.get_current_picker(bufnr)
             current_picker:refresh(topics_finder({ force_refresh = false }), { reset_prompt = true })
         end

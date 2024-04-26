@@ -8,7 +8,7 @@ local ui = require("kaf.utils.ui")
 local previwers = require("telescope.previewers")
 
 local notify = require("kaf.notify")
-local kaf = require("kaf")
+local manager = require("kaf.manager")
 
 local function prompt_new_client()
     local name = vim.fn.input("Client name: ")
@@ -46,8 +46,7 @@ end
 local function clients_finder(opts)
     opts = opts or {}
 
-    local manager = kaf.manager()
-    local clients = vim.deepcopy(manager:all_clients())
+    local clients = vim.deepcopy(manager.all_clients())
 
     local displayer = entry_display.create({
         separator = " ",
@@ -59,7 +58,7 @@ local function clients_finder(opts)
 
     local make_display = function(entry)
         local mark = " "
-        if manager:current_client() ~= nil and entry.name == manager:current_client().name then
+        if entry.name == manager.selected_client() then
             mark = "*"
         end
         return displayer({
@@ -85,8 +84,7 @@ local client_actions = {
         if not entry then
             return
         end
-        local manager = kaf.manager()
-        manager:set_client(entry.value.name)
+        manager.set_client(entry.value.name)
         actions.close(bufnr)
     end,
     create = function(bufnr)
@@ -96,7 +94,7 @@ local client_actions = {
             return
         end
 
-        kaf.manager():create_client(new_client.name, new_client.brokers)
+        manager.create_client(new_client.name, new_client.brokers)
 
         local current_picker = action_state.get_current_picker(bufnr)
         current_picker:refresh(clients_finder(), { reset_prompt = true })
@@ -106,7 +104,10 @@ local client_actions = {
         if not entry then
             return
         end
-        local client = kaf.manager():get_client(entry.value.name)
+        local client = manager.get_client(entry.value.name)
+        if not client then
+            return
+        end
         local new_data = prompt_edit_client(client.name, client.brokers)
         if new_data == nil then
             notify.notify("Client edition canceled")
@@ -128,7 +129,7 @@ local client_actions = {
             return
         end
 
-        kaf.manager():remove_client(client_name)
+        manager.remove_client(client_name)
         local current_picker = action_state.get_current_picker(bufnr)
         current_picker:refresh(clients_finder(), { reset_prompt = true })
     end,

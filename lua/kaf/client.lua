@@ -5,11 +5,11 @@ if lib == nil then
 end
 
 ---@class Client
----@field private name string
----@field private brokers string[]
----@field private cache_topics Topic[]
----@field private selected_topic string?
----@field private first_load boolean
+---@field public name string
+---@field public brokers string[]
+---@field public cache_topics Topic[]
+---@field public selected_topic string?
+---@field public first_load boolean
 local Client = {}
 Client.__index = Client
 

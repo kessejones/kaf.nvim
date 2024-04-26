@@ -5,60 +5,52 @@ local EventType = require("kaf.types").EventType
 
 ---@class Manager
 ---@field private clients table<string, Client>
----@field private selected_client string?
 local Manager = {}
 Manager.__index = Manager
 
+local _clients = {}
+local _selected_client = nil
+
 ---@param clients Client[]
 ---@param selected_client string?
----@return Manager
-function Manager.new(clients, selected_client)
-    clients = clients or {}
-
-    local obj = setmetatable({
-        clients = {},
-        selected_client = nil,
-    }, Manager)
-
-    obj:add_clients(clients)
-    obj.selected_client = selected_client
-
-    return obj
+function Manager.setup(clients, selected_client)
+    Manager.add_clients(clients)
+    _selected_client = selected_client
 end
 
 ---@param clients Client[]
-function Manager:add_clients(clients)
+function Manager.add_clients(clients)
     for _, client in ipairs(clients) do
-        self:add_client(client)
+        Manager.add_client(client)
     end
 end
 
 ---@param client Client
-function Manager:add_client(client)
-    self.clients[client.name] = client
+function Manager.add_client(client)
+    _clients[client.name] = client
 end
 
 ---@param name string
 ---@return Client|nil
-function Manager:get_client(name)
-    return self.clients[name]
+function Manager.get_client(name)
+    return _clients[name]
 end
 
 ---@param name string
-function Manager:set_client(name)
-    self.selected_client = name
+function Manager.set_client(name)
+    _selected_client = name
 
-    event.emit(EventType.ClientSelected, self:current_client())
+    event.emit(EventType.ClientSelected, Manager.current_client())
 end
 
 ---@param name string
-function Manager:remove_client(name)
-    local client = self.clients[name]
+function Manager.remove_client(name)
+    local client = _clients[name]
     if client then
-        self.clients[name] = nil
+        _clients[name] = nil
 
-        if self.selected_client == name then
-            self.selected_client = nil
+        if _selected_client == name then
+            _selected_client = nil
         end
 
         event.emit(EventType.ClientRemoved, client)
@@ -66,17 +58,22 @@ function Manager:remove_client(name)
 end
 
 ---@return Client[]
-function Manager:all_clients()
+function Manager.all_clients()
     local clients = {}
-    for _, client in pairs(self.clients) do
+    for _, client in pairs(_clients) do
         table.insert(clients, client)
     end
     return clients
 end
 
+---@return string|nil
+function Manager.selected_client()
+    return _selected_client
+end
+
 ---@return Client|nil
-function Manager:current_client()
-    return self.selected_client and self.clients[self.selected_client]
+function Manager.current_client()
+    return _selected_client and _clients[_selected_client]
 end
 
 ---@param name string
@@ -84,13 +81,13 @@ end
 ---@return Client|nil
 function Manager:create_client(name, brokers)
     local client = Client.new(name, brokers)
-    self:add_client(client)
+    Manager.add_client(client)
     return client
 end
 
 ---@return Topic[]
-function Manager:topics(force)
-    local client = self:current_client()
+function Manager.topics(force)
+    local client = Manager.current_client()
     if not client then
         notify.notify("Client not selected")
         return {}
@@ -103,8 +100,8 @@ function Manager:topics(force)
 end
 
 ---@return Message[]
-function Manager:messages()
-    local client = self:current_client()
+function Manager.messages()
+    local client = Manager.current_client()
     if not client then
         vim.notify("Client not selected")
         return {}
@@ -118,8 +115,8 @@ function Manager:messages()
 end
 
 ---@param topic_name string
-function Manager:select_topic(topic_name)
-    local client = self:current_client()
+function Manager.select_topic(topic_name)
+    local client = Manager.current_client()
     if not client then
         vim.notify("Client not selected")
         return {}
@@ -131,8 +128,8 @@ end
 
 ---@param topic_name string
 ---@param num_partitions integer
-function Manager:create_topic(topic_name, num_partitions)
-    local client = self:current_client()
+function Manager.create_topic(topic_name, num_partitions)
+    local client = Manager.current_client()
     if not client then
         vim.notify("Client not selected")
         return {}
@@ -142,8 +139,8 @@ function Manager:create_topic(topic_name, num_partitions)
 end
 
 ---@param topic_name string
-function Manager:delete_topic(topic_name)
-    local client = self:current_client()
+function Manager.delete_topic(topic_name)
+    local client = Manager.current_client()
     if not client then
         notify.notify("Client not selected")
         return {}

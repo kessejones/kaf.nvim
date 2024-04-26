@@ -6,15 +6,13 @@ local previwers = require("telescope.previewers")
 local make_entry = require("telescope.make_entry")
 local entry_display = require("telescope.pickers.entry_display")
 
-local kaf = require("kaf")
+local manager = require("kaf.manager")
 local config = require("kaf.config")
-local logger = require("kaf.logger")
 
 local function messages_finder(opts)
     opts = opts or {}
 
-    local manager = kaf.manager()
-    local messages = manager:messages()
+    local messages = manager.messages()
     local displayer = entry_display.create({
         separator = " ",
         items = {
@@ -84,8 +82,7 @@ local message_actions = {
 return function(opts)
     opts = opts or {}
 
-    -- TODO: check if we have a topic selected
-    local client = kaf.manager():current_client()
+    local client = manager.current_client()
     if not client then
         error("client is not selected")
         return

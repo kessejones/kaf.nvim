@@ -8,16 +8,13 @@ local config = require("kaf.config")
 local event = require("kaf.event")
 local logger = require("kaf.logger")
 
----@diagnostic disable-next-line: unused-local
-local manager = nil
-
 function M.setup(opts)
     opts = opts or {}
 
     local cache = Data.load_cache_file()
     ---@diagnostic disable-next-line: unused-local
     ---@diagnostic disable-next-line: undefined-field
-    manager = Manager.new(cache.clients, cache.selected_client)
+    Manager.setup(cache.clients, cache.selected_client)
 
     event.on({
         EventType.ClientSelected,
@@ -25,13 +22,14 @@ function M.setup(opts)
         EventType.ClientRemoved,
         EventType.TopicSelected,
     }, function()
-        Data.save_cache_file(manager.selected_client, manager:all_clients())
+        local client_name = nil
+        Data.save_cache_file(Manager.selected_client(), Manager.all_clients())
     end)
 
     -- save cache file on forced fetch topics
     event.on(EventType.FetchedTopics, function(e)
         if e.forced then
-            Data.save_cache_file(manager.selected_client, manager:all_clients())
+            -- Data.save_cache_file(Manager.selected_client, Manager.all_clients())
         end
     end)
 
@@ -55,7 +53,7 @@ function M.setup(opts)
         cache = Data.load_cache_file()
         ---@diagnostic disable-next-line: unused-local
         ---@diagnostic disable-next-line: undefined-field
-        manager = Manager.new(cache.clients, cache.selected_client)
+        Manager.setup(cache.clients, cache.selected_client)
     end, {})
 end
 
