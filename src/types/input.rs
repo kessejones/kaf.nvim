@@ -23,7 +23,7 @@ pub struct DeleteTopicData {
 pub struct MessageData {
     pub brokers: Vec<String>,
     pub topic: String,
-    pub offset: i64,
+    pub max_messages_per_partition: i64,
 }
 
 impl FromLua<'_> for ProducerData {
@@ -93,7 +93,7 @@ impl FromLua<'_> for MessageData {
         let brokers = table.get("brokers")?;
         let topic = table.get("topic")?;
 
-        let offset: i64 = match table.get("offset_value") {
+        let max_messages_per_partition: i64 = match table.get("max_messages_per_partition") {
             Ok(offset) => offset,
             Err(_) => 10,
         };
@@ -101,7 +101,7 @@ impl FromLua<'_> for MessageData {
         Ok(Self {
             brokers,
             topic,
-            offset,
+            max_messages_per_partition,
         })
     }
 }

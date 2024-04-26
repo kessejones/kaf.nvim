@@ -7,10 +7,10 @@ local config = {}
 function M.setup(opts)
     opts = opts or {}
 
-    config = vim.tbl_extend("force", default, opts)
+    config = vim.tbl_extend("force", opts, default)
 end
 
-function M.config()
+function M.data()
     return config
 end
 

@@ -11,6 +11,8 @@ local logger = require("kaf.logger")
 function M.setup(opts)
     opts = opts or {}
 
+    config.setup(opts)
+
     local cache = Data.load_cache_file()
     ---@diagnostic disable-next-line: unused-local
     ---@diagnostic disable-next-line: undefined-field
@@ -55,10 +57,6 @@ function M.setup(opts)
         ---@diagnostic disable-next-line: undefined-field
         Manager.setup(cache.clients, cache.selected_client)
     end, {})
-end
-
-function M.manager()
-    return manager
 end
 
 function M.produce(opts)

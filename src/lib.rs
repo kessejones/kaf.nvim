@@ -41,7 +41,7 @@ fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
     let message_data = types::input::MessageData::from_lua(LuaValue::Table(opts), lua)?;
     let mut client = KafkaClient::new(message_data.brokers);
 
-    kaf_unwrap!(client.load_metadata_all());
+    kaf_unwrap!(client.load_metadata(&[message_data.topic.as_str()]));
 
     let offsets = kaf_unwrap!(client.fetch_topic_offsets(
         message_data.topic.as_str(),
@@ -49,11 +49,8 @@ fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
     ));
 
     let reqs = offsets.iter().map(|offset| {
-        FetchPartition::new(
-            message_data.topic.as_str(),
-            offset.partition,
-            0.max(offset.offset - message_data.offset),
-        )
+        FetchPartition::new(message_data.topic.as_str(), offset.partition, 0)
+            .with_max_bytes(1024 * 1024)
     });
 
     let resps = kaf_unwrap!(client.fetch_messages(reqs));
@@ -63,7 +60,12 @@ fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
         for t in resp.topics() {
             for p in t.partitions() {
                 let data = kaf_unwrap!(p.data());
+                let mut index = 0;
                 for message in data.messages() {
+                    if index >= message_data.max_messages_per_partition {
+                        break;
+                    }
+
                     messages.push(Message {
                         key: match message.key.len() {
                             0 => None,
@@ -72,7 +74,9 @@ fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
                         partition: p.partition().to_owned(),
                         offset: message.offset.to_owned(),
                         value: kaf_unwrap!(std::str::from_utf8(message.value)).to_owned(),
-                    })
+                    });
+
+                    index = index + 1;
                 }
             }
         }

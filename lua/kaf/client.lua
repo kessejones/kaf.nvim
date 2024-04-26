@@ -1,4 +1,5 @@
 local notify = require("kaf.notify")
+local config = require("kaf.config")
 local lib = require("kaf.artifact").load_lib("libkaf")
 if lib == nil then
     error("libkaf.so not found")
@@ -101,6 +102,7 @@ function Client:messages()
     local ok, data = pcall(lib.messages, {
         brokers = self.brokers,
         topic = self.selected_topic,
+        max_messages_per_partition = config.data().kafka.max_messages_per_partition,
     })
 
     if not ok then

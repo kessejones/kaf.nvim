@@ -21,6 +21,7 @@ local M = {
     integrations = {
         fidget = true,
     },
+    kafka = { max_messages_per_partition = 10 },
 }
 
 return M
