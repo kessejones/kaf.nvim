@@ -10,7 +10,7 @@ function Job.new(cmd, opts)
     return obj
 end
 
-function Job:run_sync()
+function Job:run_sync(input)
     local output = {}
     local exit_code = 0
 
@@ -20,12 +20,17 @@ function Job:run_sync()
                 table.insert(output, line)
             end
         end,
-        on_exit = function(code, _)
+        on_exit = function(_, code)
             exit_code = code
         end,
+        stdout_buffered = true,
     })
 
     local jid = vim.fn.jobstart(self.cmd, opts_extended)
+    if input ~= nil and #input > 0 then
+        vim.fn.chansend(jid, input)
+        vim.fn.chanclose(jid, "stdin")
+    end
     vim.fn.jobwait({ jid })
 
     return { success = exit_code == 0, lines = output }

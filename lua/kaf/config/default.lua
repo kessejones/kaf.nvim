@@ -1,10 +1,12 @@
+local Job = require("kaf.utils.job")
+
 local type_formatter = setmetatable({
     json = function(text)
-        local output = vim.fn.system(string.format([[echo '%s' | jq]], text))
-        if vim.v.shell_error ~= 0 then
+        local output = Job.new("jq"):run_sync(text)
+        if output.success == false then
             return { text }
         end
-        return vim.split(output, "\n")
+        return output.lines
     end,
 }, {})
 
