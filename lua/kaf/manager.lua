@@ -14,12 +14,13 @@ local _selected_client = nil
 ---@param clients Client[]
 ---@param selected_client string?
 function Manager.setup(clients, selected_client)
+    _clients = {}
     Manager.add_clients(clients)
     _selected_client = selected_client
 end
 
 ---@param clients Client[]
-function Manager.add_clients(clients)
+function Manager.add_clients(clients, internal)
     for _, client in ipairs(clients) do
         Manager.add_client(client)
     end
@@ -79,9 +80,11 @@ end
 ---@param name string
 ---@param brokers string[]
 ---@return Client|nil
-function Manager:create_client(name, brokers)
+function Manager.create_client(name, brokers)
     local client = Client.new(name, brokers)
     Manager.add_client(client)
+    event.emit(EventType.ClientCreated)
+
     return client
 end
 
@@ -95,7 +98,7 @@ function Manager.topics(force)
 
     event.emit(EventType.FetchingTopics)
     local topics = client:topics(force)
-    event.emit(EventType.FetchedTopics, { forced = force })
+    event.emit(EventType.TopicsFetched, { forced = force })
     return topics
 end
 
@@ -107,9 +110,9 @@ function Manager.messages()
         return {}
     end
 
-    event.emit(EventType.FetchingMessages)
+    event.emit(EventType.MessagesFetching)
     local messages = client:messages()
-    event.emit(EventType.FetchedMessages)
+    event.emit(EventType.MessagesFetched)
 
     return messages
 end
@@ -135,7 +138,9 @@ function Manager.create_topic(topic_name, num_partitions)
         return {}
     end
 
-    client:create_topic(topic_name, num_partitions)
+    if client:create_topic(topic_name, num_partitions) then
+        event.emit(EventType.TopicCreated)
+    end
 end
 
 ---@param topic_name string
@@ -146,8 +151,22 @@ function Manager.delete_topic(topic_name)
         return {}
     end
 
-    client:delete_topic(topic_name)
-    event.emit(EventType.TopicDeleted)
+    if client:delete_topic(topic_name) then
+        event.emit(EventType.TopicDeleted)
+    end
+end
+
+---@param key string?
+---@param value string
+function Manager.produce_message(key, value)
+    local client = Manager.current_client()
+    if not client then
+        notify.notify("Client not selected")
+        return {}
+    end
+
+    client:produce(key, value)
+    event.emit(EventType.MessageProduced)
 end
 
 return Manager

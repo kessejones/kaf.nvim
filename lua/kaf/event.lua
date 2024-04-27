@@ -10,7 +10,9 @@ end
 function M.on(pattern, callback)
     vim.api.nvim_create_autocmd("User", {
         pattern = pattern,
-        callback = callback,
+        callback = vim.schedule_wrap(function(e)
+            callback(e)
+        end),
     })
 end
 

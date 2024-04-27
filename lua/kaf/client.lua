@@ -54,7 +54,9 @@ end
 function Client:create_topic(name, num_partitions)
     local ok, data = pcall(lib.create_topic, { brokers = self.brokers, topic = name, num_partitions = num_partitions })
 
-    notify.notify(data)
+    if not ok then
+        notify.notify(data)
+    end
 
     return ok
 end
@@ -70,9 +72,9 @@ function Client:delete_topic(name)
                 break
             end
         end
+    else
+        notify.notify(data)
     end
-
-    notify.notify(data)
 
     return ok
 end

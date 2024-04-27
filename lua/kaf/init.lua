@@ -2,83 +2,96 @@ local EventType = require("kaf.types").EventType
 
 local M = {}
 
-local Manager = require("kaf.manager")
-local Data = require("kaf.data")
+local manager = require("kaf.manager")
+local data = require("kaf.data")
 local config = require("kaf.config")
 local event = require("kaf.event")
 local logger = require("kaf.logger")
+
+local function register_events()
+    event.on({
+        EventType.ClientSelected,
+        EventType.TopicSelected,
+        EventType.ClientRemoved,
+        EventType.ClientCreated,
+        EventType.TopicSelected,
+    }, function()
+        data.save_cache()
+    end)
+
+    event.on(EventType.MessagesFetching, function()
+        require("kaf.integrations.fidget").progress("Kaf", "Fetching messages")
+    end)
+
+    event.on(EventType.MessagesFetched, function()
+        require("kaf.integrations.fidget").finish()
+        require("kaf.integrations.fidget").notify("Messages Fetched")
+    end)
+
+    event.on(EventType.MessageProduced, function()
+        require("kaf.integrations.fidget").notify("Message Produced")
+    end)
+
+    event.on(EventType.TopicsFetched, function(e)
+        if e.forced then
+            data.save_cache()
+            require("kaf.integrations.fidget").notify("Topics Reloaded")
+        end
+    end)
+
+    event.on(EventType.TopicCreated, function()
+        require("kaf.integrations.fidget").notify("Topic Created")
+    end)
+
+    event.on(EventType.TopicDeleted, function()
+        require("kaf.integrations.fidget").notify("Topic Deleted")
+    end)
+end
+
+local function register_commands()
+    vim.api.nvim_create_user_command("KafLogs", function()
+        logger.show()
+    end, {})
+
+    vim.api.nvim_create_user_command("KafReloadCache", function()
+        local cache = data.load_cache_file()
+        manager.setup(cache.clients, cache.selected_client)
+    end, {})
+
+    vim.api.nvim_create_user_command("KafSaveCache", function()
+        data.save_file()
+    end, {})
+
+    vim.api.nvim_create_user_command("KafDeleteCache", function()
+        data.delete_cache()
+        manager.setup({}, nil)
+    end, {})
+end
 
 function M.setup(opts)
     opts = opts or {}
 
     config.setup(opts)
 
-    local cache = Data.load_cache_file()
-    ---@diagnostic disable-next-line: unused-local
-    ---@diagnostic disable-next-line: undefined-field
-    Manager.setup(cache.clients, cache.selected_client)
+    local cache = data.load_cache_file()
+    manager.setup(cache.clients, cache.selected_client)
 
-    event.on({
-        EventType.ClientSelected,
-        EventType.TopicSelected,
-        EventType.ClientRemoved,
-        EventType.TopicSelected,
-    }, function()
-        local client_name = nil
-        Data.save_cache_file(Manager.selected_client(), Manager.all_clients())
-    end)
-
-    -- save cache file on forced fetch topics
-    event.on(EventType.FetchedTopics, function(e)
-        if e.forced then
-            -- Data.save_cache_file(Manager.selected_client, Manager.all_clients())
-        end
-    end)
-
-    event.on(EventType.FetchingMessages, function()
-        require("kaf.integrations.fidget").progress("Kaf", "Fetching messages")
-    end)
-
-    event.on(EventType.FetchedMessages, function()
-        require("kaf.integrations.fidget").finish()
-    end)
-
-    event.on(EventType.ProducedMessage, function()
-        require("kaf.integrations.fidget").notify("Produced Message")
-    end)
-
-    vim.api.nvim_create_user_command("KafLogs", function()
-        logger.show()
-    end, {})
-
-    vim.api.nvim_create_user_command("KafReloadCache", function()
-        cache = Data.load_cache_file()
-        ---@diagnostic disable-next-line: unused-local
-        ---@diagnostic disable-next-line: undefined-field
-        Manager.setup(cache.clients, cache.selected_client)
-    end, {})
+    register_events()
+    register_commands()
 end
 
 function M.produce(opts)
     opts = opts or {}
-
-    config.setup(opts)
 
     local key = opts.key or nil
     if opts.ask_key then
         key = require("kaf.utils.ui").prompt("Key: ")
     end
 
-    local value = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "")
-    if opts.client == nil then
-        ---@diagnostic disable-next-line: undefined-field,need-check-nil
-        local client = manager:current_client()
-        if not client then
-            return
-        end
+    -- TODO: maybe we also can get value from a file picked by telescope
 
-        client:produce(key, value)
-    end
+    local value = require("kaf.utils.buffer").get_buffer_content()
+    manager.produce_message(key, value)
 end
 
 return M
