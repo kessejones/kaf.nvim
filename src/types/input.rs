@@ -2,6 +2,10 @@ use mlua::prelude::LuaValue;
 use mlua::prelude::*;
 use mlua::Error;
 
+pub struct ListTopicData {
+    pub brokers: Vec<String>,
+}
+
 pub struct ProducerData {
     pub brokers: Vec<String>,
     pub topic: String,
@@ -24,6 +28,19 @@ pub struct MessageData {
     pub brokers: Vec<String>,
     pub topic: String,
     pub max_messages_per_partition: i64,
+}
+
+impl FromLua<'_> for ListTopicData {
+    fn from_lua(value: LuaValue<'_>, _lua: &'_ Lua) -> LuaResult<Self> {
+        let table = match value.as_table() {
+            Some(table) => table,
+            None => return Err(Error::RuntimeError("Invalid table".to_string())),
+        };
+
+        let brokers = table.get("brokers")?;
+
+        Ok(Self { brokers })
+    }
 }
 
 impl FromLua<'_> for ProducerData {

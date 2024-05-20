@@ -10,30 +10,48 @@ macro_rules! kaf_unwrap {
     };
 }
 
+#[macro_export]
+macro_rules! kaf_rd_unwrap {
+    ($e:expr) => {
+        match $e {
+            Ok(data) => data,
+            Err((e, _)) => return LuaResult::Err(mlua::Error::RuntimeError(format!("{:?}", e))),
+        }
+    };
+}
+
 use std::collections::HashMap;
 
-use kafka::client::{FetchPartition, KafkaClient};
-use kafka::producer::{Producer, Record};
 use mlua::prelude::*;
 
-use rdkafka::admin::AdminClient;
+use rdkafka::admin::{AdminClient, AdminOptions};
+use rdkafka::client::DefaultClientContext;
 use rdkafka::config::FromClientConfig;
-use rdkafka::consumer::ConsumerContext;
+use rdkafka::consumer::Consumer;
+use rdkafka::consumer::{BaseConsumer, ConsumerContext};
+use rdkafka::producer::{BaseProducer, Producer};
 use rdkafka::statistics::TopicPartition;
 use rdkafka::topic_partition_list::TopicPartitionListElem;
 use rdkafka::util::Timeout;
-use rdkafka::{ClientContext, Offset, TopicPartitionList};
+use rdkafka::{ClientConfig, ClientContext, Offset, TopicPartitionList};
 
 use crate::types::output::Topic;
 use crate::types::output::{vec_to_table, Message};
 
-fn topics<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
-    let mut client = KafkaClient::new(opts.get("brokers")?);
+fn internal_topics<'a>(lua: &'a Lua, data: types::input::ListTopicData) -> LuaResult<LuaValue<'a>> {
+    let mut consumer_config = ClientConfig::new();
+    consumer_config
+        .set("bootstrap.servers", data.brokers.join(","))
+        .set("enable.auto.commit", "false")
+        .set("group.id", "kaf.nvim");
+    let consumer_context = CustomConsumerContext;
+    let consumer: BaseConsumer<_> =
+        kaf_unwrap!(consumer_config.create_with_context(consumer_context));
 
-    kaf_unwrap!(client.load_metadata_all());
+    let metadata = kaf_unwrap!(consumer.fetch_metadata(None, std::time::Duration::from_secs(10)));
 
     let mut topics = vec![];
-    for topic in client.topics().iter() {
+    for topic in metadata.topics() {
         topics.push(Topic {
             name: topic.name().to_string(),
             partitions: topic.partitions().len(),
@@ -41,6 +59,11 @@ fn topics<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
     }
 
     vec_to_table(lua, topics)
+}
+
+fn topics<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
+    let data = types::input::ListTopicData::from_lua(LuaValue::Table(opts), lua)?;
+    internal_topics(lua, data)
 }
 
 struct CustomConsumerContext;
@@ -57,14 +80,14 @@ fn internal_messages<'a>(
 ) -> LuaResult<LuaValue<'a>> {
     use rdkafka::consumer::Consumer;
 
-    let mut consumer_config = rdkafka::ClientConfig::new();
+    let mut consumer_config = ClientConfig::new();
     consumer_config
         .set("bootstrap.servers", data.brokers.join(","))
         .set("enable.auto.commit", "false")
         .set("group.id", "kaf.nvim");
 
     let consumer_context = CustomConsumerContext;
-    let consumer: rdkafka::consumer::BaseConsumer<_> =
+    let consumer: BaseConsumer<_> =
         kaf_unwrap!(consumer_config.create_with_context(consumer_context));
 
     kaf_unwrap!(consumer.subscribe(&[data.topic.as_str()]));
@@ -105,7 +128,7 @@ fn internal_messages<'a>(
     let mut messages: Vec<crate::types::output::Message> = vec![];
 
     loop {
-        match consumer.poll(std::time::Duration::from_secs(10)) {
+        match consumer.poll(std::time::Duration::from_secs(2)) {
             Some(Ok(message)) => match rdkafka::Message::payload_view::<str>(&message) {
                 Some(payload) => {
                     let key = match rdkafka::Message::key(&message) {
@@ -151,25 +174,29 @@ fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
     internal_messages(lua, &message_data)
 }
 
+fn internal_producer<'a>(lua: &'a Lua, data: types::input::ProducerData) -> LuaResult<()> {
+    let mut producer_config = ClientConfig::new();
+    producer_config.set("bootstrap.servers", data.brokers.join(","));
+    let producer: BaseProducer = kaf_unwrap!(producer_config.create());
+
+    kaf_rd_unwrap!(producer.send(
+        rdkafka::producer::BaseRecord::to(data.topic.as_str())
+            .key(match data.key {
+                Some(ref key) => key.as_str(),
+                None => "",
+            })
+            .payload(data.value.as_str()),
+    ));
+
+    kaf_unwrap!(producer.flush(std::time::Duration::from_secs(2)));
+
+    Ok(())
+}
+
 fn produce_message<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<()> {
     let producer_data = types::input::ProducerData::from_lua(LuaValue::Table(opts), lua)?;
 
-    let mut client = KafkaClient::new(producer_data.brokers);
-    kaf_unwrap!(client.load_metadata_all());
-
-    let mut producer = kaf_unwrap!(Producer::from_client(client).create());
-
-    kaf_unwrap!(producer.send(&Record {
-        topic: producer_data.topic.as_str(),
-        partition: -1,
-        key: match producer_data.key {
-            Some(key) => key,
-            None => "".to_owned(),
-        },
-        value: producer_data.value,
-    }));
-
-    Ok(())
+    internal_producer(lua, producer_data)
 }
 
 async fn internal_create_topic(topic_data: &types::input::TopicData) -> LuaResult<()> {
@@ -185,23 +212,20 @@ async fn internal_create_topic(topic_data: &types::input::TopicData) -> LuaResul
     );
 
     let result = client
-        .create_topics(&[new_topic], &rdkafka::admin::AdminOptions::new())
+        .create_topics(&[new_topic], &AdminOptions::new())
         .await;
     kaf_unwrap!(result);
     Ok(())
 }
 
 async fn internal_delete_topic(topic_data: &types::input::DeleteTopicData) -> LuaResult<()> {
-    let mut config = rdkafka::config::ClientConfig::new();
+    let mut config = ClientConfig::new();
     config.set("bootstrap.servers", topic_data.brokers.join(","));
 
     let client = kaf_unwrap!(AdminClient::from_config(&config));
 
     let result = client
-        .delete_topics(
-            &[topic_data.topic.as_str()],
-            &rdkafka::admin::AdminOptions::new(),
-        )
+        .delete_topics(&[topic_data.topic.as_str()], &AdminOptions::new())
         .await;
     kaf_unwrap!(result);
     Ok(())
