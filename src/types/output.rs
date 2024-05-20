@@ -11,6 +11,7 @@ pub struct Message {
     pub key: Option<String>,
     pub partition: i32,
     pub offset: i64,
+    pub timestamp: Option<i64>,
     pub value: String,
 }
 

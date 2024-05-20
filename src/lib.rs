@@ -10,13 +10,19 @@ macro_rules! kaf_unwrap {
     };
 }
 
-use futures::{self, executor};
+use std::collections::HashMap;
+
 use kafka::client::{FetchPartition, KafkaClient};
 use kafka::producer::{Producer, Record};
 use mlua::prelude::*;
 
 use rdkafka::admin::AdminClient;
 use rdkafka::config::FromClientConfig;
+use rdkafka::consumer::ConsumerContext;
+use rdkafka::statistics::TopicPartition;
+use rdkafka::topic_partition_list::TopicPartitionListElem;
+use rdkafka::util::Timeout;
+use rdkafka::{ClientContext, Offset, TopicPartitionList};
 
 use crate::types::output::Topic;
 use crate::types::output::{vec_to_table, Message};
@@ -37,52 +43,112 @@ fn topics<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
     vec_to_table(lua, topics)
 }
 
-fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
-    let message_data = types::input::MessageData::from_lua(LuaValue::Table(opts), lua)?;
-    let mut client = KafkaClient::new(message_data.brokers);
+struct CustomConsumerContext;
 
-    kaf_unwrap!(client.load_metadata(&[message_data.topic.as_str()]));
+impl ClientContext for CustomConsumerContext {}
 
-    let offsets = kaf_unwrap!(client.fetch_topic_offsets(
-        message_data.topic.as_str(),
-        kafka::consumer::FetchOffset::Latest
+impl ConsumerContext for CustomConsumerContext {
+    fn pre_rebalance(&self, _rebalance: &rdkafka::consumer::Rebalance) {}
+}
+
+fn internal_messages<'a>(
+    lua: &'a Lua,
+    data: &types::input::MessageData,
+) -> LuaResult<LuaValue<'a>> {
+    use rdkafka::consumer::Consumer;
+
+    let mut consumer_config = rdkafka::ClientConfig::new();
+    consumer_config
+        .set("bootstrap.servers", data.brokers.join(","))
+        .set("enable.auto.commit", "false")
+        .set("group.id", "kaf.nvim");
+
+    let consumer_context = CustomConsumerContext;
+    let consumer: rdkafka::consumer::BaseConsumer<_> =
+        kaf_unwrap!(consumer_config.create_with_context(consumer_context));
+
+    kaf_unwrap!(consumer.subscribe(&[data.topic.as_str()]));
+
+    let metadata = kaf_unwrap!(consumer.fetch_metadata(
+        Some(data.topic.as_str()),
+        std::time::Duration::from_secs(10),
     ));
 
-    let reqs = offsets.iter().map(|offset| {
-        FetchPartition::new(message_data.topic.as_str(), offset.partition, 0)
-            .with_max_bytes(1024 * 1024)
-    });
+    let mut max_messages_partition = HashMap::new();
 
-    let resps = kaf_unwrap!(client.fetch_messages(reqs));
+    let mut topic_partitions = TopicPartitionList::new();
+    for metadata_topic in metadata.topics() {
+        for partition in metadata_topic.partitions() {
+            let (low, high) = kaf_unwrap!(consumer.fetch_watermarks(
+                metadata_topic.name(),
+                partition.id(),
+                std::time::Duration::from_secs(10)
+            ));
 
-    let mut messages = vec![];
-    for resp in resps.iter() {
-        for t in resp.topics() {
-            for p in t.partitions() {
-                let data = kaf_unwrap!(p.data());
-                let mut index = 0;
-                for message in data.messages() {
-                    if index >= message_data.max_messages_per_partition {
-                        break;
-                    }
+            let offset = if high - low > data.max_messages_per_partition {
+                high - data.max_messages_per_partition
+            } else {
+                low
+            };
 
-                    messages.push(Message {
-                        key: match message.key.len() {
-                            0 => None,
-                            _ => Some(kaf_unwrap!(std::str::from_utf8(message.key)).to_owned()),
-                        },
-                        partition: p.partition().to_owned(),
-                        offset: message.offset.to_owned(),
-                        value: kaf_unwrap!(std::str::from_utf8(message.value)).to_owned(),
-                    });
+            kaf_unwrap!(topic_partitions.add_partition_offset(
+                metadata_topic.name(),
+                partition.id(),
+                Offset::Offset(offset),
+            ));
 
-                    index = index + 1;
-                }
-            }
+            max_messages_partition.insert(partition.id(), 0);
         }
     }
 
+    kaf_unwrap!(consumer.assign(&topic_partitions));
+    let mut messages: Vec<crate::types::output::Message> = vec![];
+
+    loop {
+        match consumer.poll(std::time::Duration::from_secs(10)) {
+            Some(Ok(message)) => match rdkafka::Message::payload_view::<str>(&message) {
+                Some(payload) => {
+                    let key = match rdkafka::Message::key(&message) {
+                        Some(key) => Some(kaf_unwrap!(std::str::from_utf8(key)).to_owned()),
+                        None => None,
+                    };
+
+                    let timestamp = match rdkafka::Message::timestamp(&message) {
+                        rdkafka::Timestamp::NotAvailable => None,
+                        rdkafka::Timestamp::CreateTime(value) => Some(value),
+                        rdkafka::Timestamp::LogAppendTime(value) => Some(value),
+                    };
+
+                    messages.push(crate::types::output::Message {
+                        key,
+                        partition: rdkafka::Message::partition(&message),
+                        timestamp,
+                        offset: rdkafka::Message::offset(&message),
+                        value: kaf_unwrap!(payload).to_owned(),
+                    });
+
+                    max_messages_partition
+                        .get_mut(&rdkafka::Message::partition(&message))
+                        .map(|x| *x += 1);
+
+                    if !max_messages_partition
+                        .iter()
+                        .any(|(key, value)| *value < data.max_messages_per_partition)
+                    {
+                        break;
+                    }
+                }
+                None => break,
+            },
+            _ => break,
+        }
+    }
     vec_to_table(lua, messages)
+}
+
+fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
+    let message_data = types::input::MessageData::from_lua(LuaValue::Table(opts), lua)?;
+    internal_messages(lua, &message_data)
 }
 
 fn produce_message<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<()> {
@@ -144,13 +210,13 @@ async fn internal_delete_topic(topic_data: &types::input::DeleteTopicData) -> Lu
 fn create_topic<'a>(lua: &'a Lua, opts: mlua::Table<'a>) -> LuaResult<()> {
     let topic_data = types::input::TopicData::from_lua(LuaValue::Table(opts), lua)?;
 
-    executor::block_on(internal_create_topic(&topic_data))
+    futures::executor::block_on(internal_create_topic(&topic_data))
 }
 
 fn delete_topic<'a>(lua: &'a Lua, opts: mlua::Table<'a>) -> LuaResult<()> {
     let topic_data = types::input::DeleteTopicData::from_lua(LuaValue::Table(opts), lua)?;
 
-    executor::block_on(internal_delete_topic(&topic_data))
+    futures::executor::block_on(internal_delete_topic(&topic_data))
 }
 
 #[mlua::lua_module]
