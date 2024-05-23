@@ -19,26 +19,29 @@ macro_rules! kaf_rd_unwrap {
         }
     };
 }
-
-use std::collections::HashMap;
-
 use mlua::prelude::*;
 
 use rdkafka::admin::{AdminClient, AdminOptions};
-use rdkafka::client::DefaultClientContext;
-use rdkafka::config::FromClientConfig;
-use rdkafka::consumer::Consumer;
-use rdkafka::consumer::{BaseConsumer, ConsumerContext};
-use rdkafka::producer::{BaseProducer, Producer};
-use rdkafka::statistics::TopicPartition;
-use rdkafka::topic_partition_list::TopicPartitionListElem;
-use rdkafka::util::Timeout;
-use rdkafka::{ClientConfig, ClientContext, Offset, TopicPartitionList};
+use rdkafka::config::{ClientConfig, FromClientConfig};
+use rdkafka::consumer::{BaseConsumer, Consumer, ConsumerContext};
+use rdkafka::producer::{BaseProducer, BaseRecord, Producer};
+use rdkafka::{ClientContext, Offset, TopicPartitionList};
 
-use crate::types::output::Topic;
-use crate::types::output::{vec_to_table, Message};
+use std::collections::HashMap;
+use std::time::Duration;
 
-fn internal_topics<'a>(lua: &'a Lua, data: types::input::ListTopicData) -> LuaResult<LuaValue<'a>> {
+use crate::types::input::{CreateTopicData, DeleteTopicData, ListMessagesData, ListTopicsData};
+use crate::types::output::{vec_to_table, Message, Topic};
+
+struct CustomConsumerContext;
+
+impl ClientContext for CustomConsumerContext {}
+
+impl ConsumerContext for CustomConsumerContext {
+    fn pre_rebalance(&self, _rebalance: &rdkafka::consumer::Rebalance) {}
+}
+
+fn internal_topics<'a>(lua: &'a Lua, data: ListTopicsData) -> LuaResult<LuaValue<'a>> {
     let mut consumer_config = ClientConfig::new();
     consumer_config
         .set("bootstrap.servers", data.brokers.join(","))
@@ -62,24 +65,11 @@ fn internal_topics<'a>(lua: &'a Lua, data: types::input::ListTopicData) -> LuaRe
 }
 
 fn topics<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
-    let data = types::input::ListTopicData::from_lua(LuaValue::Table(opts), lua)?;
+    let data = ListTopicsData::from_lua(LuaValue::Table(opts), lua)?;
     internal_topics(lua, data)
 }
 
-struct CustomConsumerContext;
-
-impl ClientContext for CustomConsumerContext {}
-
-impl ConsumerContext for CustomConsumerContext {
-    fn pre_rebalance(&self, _rebalance: &rdkafka::consumer::Rebalance) {}
-}
-
-fn internal_messages<'a>(
-    lua: &'a Lua,
-    data: &types::input::MessageData,
-) -> LuaResult<LuaValue<'a>> {
-    use rdkafka::consumer::Consumer;
-
+fn internal_messages<'a>(lua: &'a Lua, data: &ListMessagesData) -> LuaResult<LuaValue<'a>> {
     let mut consumer_config = ClientConfig::new();
     consumer_config
         .set("bootstrap.servers", data.brokers.join(","))
@@ -92,10 +82,8 @@ fn internal_messages<'a>(
 
     kaf_unwrap!(consumer.subscribe(&[data.topic.as_str()]));
 
-    let metadata = kaf_unwrap!(consumer.fetch_metadata(
-        Some(data.topic.as_str()),
-        std::time::Duration::from_secs(10),
-    ));
+    let metadata =
+        kaf_unwrap!(consumer.fetch_metadata(Some(data.topic.as_str()), Duration::from_secs(10)));
 
     let mut max_messages_partition = HashMap::new();
 
@@ -105,10 +93,11 @@ fn internal_messages<'a>(
             let (low, high) = kaf_unwrap!(consumer.fetch_watermarks(
                 metadata_topic.name(),
                 partition.id(),
-                std::time::Duration::from_secs(10)
+                Duration::from_secs(10)
             ));
 
-            let offset = if high - low > data.max_messages_per_partition {
+            let count_messages = high - low;
+            let offset = if count_messages > data.max_messages_per_partition {
                 high - data.max_messages_per_partition
             } else {
                 low
@@ -120,16 +109,16 @@ fn internal_messages<'a>(
                 Offset::Offset(offset),
             ));
 
-            let max_messages = data.max_messages_per_partition.min(high - low);
+            let max_messages = data.max_messages_per_partition.min(count_messages);
             max_messages_partition.insert(partition.id(), max_messages);
         }
     }
 
     kaf_unwrap!(consumer.assign(&topic_partitions));
-    let mut messages: Vec<crate::types::output::Message> = vec![];
+    let mut messages: Vec<Message> = vec![];
 
     loop {
-        match consumer.poll(std::time::Duration::from_secs(2)) {
+        match consumer.poll(Duration::from_secs(2)) {
             Some(Ok(message)) => match rdkafka::Message::payload_view::<str>(&message) {
                 Some(payload) => {
                     let key = match rdkafka::Message::key(&message) {
@@ -143,7 +132,7 @@ fn internal_messages<'a>(
                         rdkafka::Timestamp::LogAppendTime(value) => Some(value),
                     };
 
-                    messages.push(crate::types::output::Message {
+                    messages.push(Message {
                         key,
                         partition: rdkafka::Message::partition(&message),
                         timestamp,
@@ -167,21 +156,22 @@ fn internal_messages<'a>(
             _ => break,
         }
     }
+
     vec_to_table(lua, messages)
 }
 
 fn messages<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<LuaValue<'a>> {
-    let message_data = types::input::MessageData::from_lua(LuaValue::Table(opts), lua)?;
+    let message_data = ListMessagesData::from_lua(LuaValue::Table(opts), lua)?;
     internal_messages(lua, &message_data)
 }
 
-fn internal_producer<'a>(lua: &'a Lua, data: types::input::ProducerData) -> LuaResult<()> {
+fn internal_producer<'a>(_lua: &'a Lua, data: types::input::ProduceMessageData) -> LuaResult<()> {
     let mut producer_config = ClientConfig::new();
     producer_config.set("bootstrap.servers", data.brokers.join(","));
     let producer: BaseProducer = kaf_unwrap!(producer_config.create());
 
     kaf_rd_unwrap!(producer.send(
-        rdkafka::producer::BaseRecord::to(data.topic.as_str())
+        BaseRecord::to(data.topic.as_str())
             .key(match data.key {
                 Some(ref key) => key.as_str(),
                 None => "",
@@ -189,19 +179,19 @@ fn internal_producer<'a>(lua: &'a Lua, data: types::input::ProducerData) -> LuaR
             .payload(data.value.as_str()),
     ));
 
-    kaf_unwrap!(producer.flush(std::time::Duration::from_secs(2)));
+    kaf_unwrap!(producer.flush(Duration::from_secs(2)));
 
     Ok(())
 }
 
 fn produce_message<'a>(lua: &'a Lua, opts: mlua::Table) -> LuaResult<()> {
-    let producer_data = types::input::ProducerData::from_lua(LuaValue::Table(opts), lua)?;
+    let producer_data = types::input::ProduceMessageData::from_lua(LuaValue::Table(opts), lua)?;
 
     internal_producer(lua, producer_data)
 }
 
-async fn internal_create_topic(topic_data: &types::input::TopicData) -> LuaResult<()> {
-    let mut config = rdkafka::config::ClientConfig::new();
+async fn internal_create_topic(topic_data: CreateTopicData) -> LuaResult<()> {
+    let mut config = ClientConfig::new();
     config.set("bootstrap.servers", topic_data.brokers.join(","));
 
     let client = kaf_unwrap!(AdminClient::from_config(&config));
@@ -219,7 +209,7 @@ async fn internal_create_topic(topic_data: &types::input::TopicData) -> LuaResul
     Ok(())
 }
 
-async fn internal_delete_topic(topic_data: &types::input::DeleteTopicData) -> LuaResult<()> {
+async fn internal_delete_topic(topic_data: DeleteTopicData) -> LuaResult<()> {
     let mut config = ClientConfig::new();
     config.set("bootstrap.servers", topic_data.brokers.join(","));
 
@@ -233,15 +223,15 @@ async fn internal_delete_topic(topic_data: &types::input::DeleteTopicData) -> Lu
 }
 
 fn create_topic<'a>(lua: &'a Lua, opts: mlua::Table<'a>) -> LuaResult<()> {
-    let topic_data = types::input::TopicData::from_lua(LuaValue::Table(opts), lua)?;
+    let topic_data = CreateTopicData::from_lua(LuaValue::Table(opts), lua)?;
 
-    futures::executor::block_on(internal_create_topic(&topic_data))
+    futures::executor::block_on(internal_create_topic(topic_data))
 }
 
 fn delete_topic<'a>(lua: &'a Lua, opts: mlua::Table<'a>) -> LuaResult<()> {
-    let topic_data = types::input::DeleteTopicData::from_lua(LuaValue::Table(opts), lua)?;
+    let topic_data = DeleteTopicData::from_lua(LuaValue::Table(opts), lua)?;
 
-    futures::executor::block_on(internal_delete_topic(&topic_data))
+    futures::executor::block_on(internal_delete_topic(topic_data))
 }
 
 #[mlua::lua_module]

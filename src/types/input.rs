@@ -2,18 +2,18 @@ use mlua::prelude::LuaValue;
 use mlua::prelude::*;
 use mlua::Error;
 
-pub struct ListTopicData {
+pub struct ListTopicsData {
     pub brokers: Vec<String>,
 }
 
-pub struct ProducerData {
+pub struct ProduceMessageData {
     pub brokers: Vec<String>,
     pub topic: String,
     pub key: Option<String>,
     pub value: String,
 }
 
-pub struct TopicData {
+pub struct CreateTopicData {
     pub brokers: Vec<String>,
     pub topic: String,
     pub num_partitions: i32,
@@ -24,13 +24,13 @@ pub struct DeleteTopicData {
     pub topic: String,
 }
 
-pub struct MessageData {
+pub struct ListMessagesData {
     pub brokers: Vec<String>,
     pub topic: String,
     pub max_messages_per_partition: i64,
 }
 
-impl FromLua<'_> for ListTopicData {
+impl FromLua<'_> for ListTopicsData {
     fn from_lua(value: LuaValue<'_>, _lua: &'_ Lua) -> LuaResult<Self> {
         let table = match value.as_table() {
             Some(table) => table,
@@ -43,7 +43,7 @@ impl FromLua<'_> for ListTopicData {
     }
 }
 
-impl FromLua<'_> for ProducerData {
+impl FromLua<'_> for ProduceMessageData {
     fn from_lua(value: LuaValue<'_>, _lua: &'_ Lua) -> LuaResult<Self> {
         let table = match value.as_table() {
             Some(table) => table,
@@ -59,7 +59,7 @@ impl FromLua<'_> for ProducerData {
         let value = table.get("value")?;
         let brokers = table.get("brokers")?;
 
-        Ok(ProducerData {
+        Ok(ProduceMessageData {
             brokers,
             topic,
             key,
@@ -68,7 +68,7 @@ impl FromLua<'_> for ProducerData {
     }
 }
 
-impl FromLua<'_> for TopicData {
+impl FromLua<'_> for CreateTopicData {
     fn from_lua(value: LuaValue<'_>, _lua: &'_ Lua) -> LuaResult<Self> {
         let table = match value.as_table() {
             Some(table) => table,
@@ -100,7 +100,7 @@ impl FromLua<'_> for DeleteTopicData {
         Ok(Self { brokers, topic })
     }
 }
-impl FromLua<'_> for MessageData {
+impl FromLua<'_> for ListMessagesData {
     fn from_lua(value: LuaValue<'_>, _lua: &'_ Lua) -> LuaResult<Self> {
         let table = match value.as_table() {
             Some(table) => table,
