@@ -120,7 +120,8 @@ fn internal_messages<'a>(
                 Offset::Offset(offset),
             ));
 
-            max_messages_partition.insert(partition.id(), 0);
+            let max_messages = data.max_messages_per_partition.min(high - low);
+            max_messages_partition.insert(partition.id(), max_messages);
         }
     }
 
@@ -152,11 +153,11 @@ fn internal_messages<'a>(
 
                     max_messages_partition
                         .get_mut(&rdkafka::Message::partition(&message))
-                        .map(|x| *x += 1);
+                        .map(|x| *x -= 1);
 
                     if !max_messages_partition
                         .iter()
-                        .any(|(key, value)| *value < data.max_messages_per_partition)
+                        .any(|(_key, value)| *value > 0)
                     {
                         break;
                     }
