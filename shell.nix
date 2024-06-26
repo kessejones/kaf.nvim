@@ -2,8 +2,6 @@
 with pkgs;
   mkShell {
     buildInputs = [
-      openssl
-      pkg-config
-      cmake
+      go
     ];
   }

@@ -7,6 +7,7 @@ local data = require("kaf.data")
 local config = require("kaf.config")
 local event = require("kaf.event")
 local logger = require("kaf.logger")
+local register = require("kaf.register")
 
 local function register_events()
     event.on({
@@ -71,6 +72,7 @@ end
 function M.setup(opts)
     opts = opts or {}
 
+    register.setup()
     config.setup(opts)
 
     local cache = data.load_cache_file()

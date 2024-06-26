@@ -1,9 +1,5 @@
 local notify = require("kaf.notify")
 local config = require("kaf.config")
-local lib = require("kaf.artifact").load_lib("libkaf")
-if lib == nil then
-    error("libkaf.so not found")
-end
 
 ---@class Client
 ---@field public name string
@@ -28,9 +24,8 @@ end
 ---@param force boolean
 ---@return Topic[]
 function Client:topics(force)
-    -- TODO: maybe we should check a timestamp of cache
     if force or #self.cache_topics == 0 then
-        local ok, data = pcall(lib.topics, { brokers = self.brokers })
+        local ok, data = pcall(vim.fn.KafTopics, { brokers = self.brokers })
         if not ok then
             notify.notify(data)
             return {}
@@ -52,7 +47,7 @@ end
 
 ---@param name string
 function Client:create_topic(name, num_partitions)
-    local ok, data = pcall(lib.create_topic, { brokers = self.brokers, topic = name, num_partitions = num_partitions })
+    local ok, data = pcall(vim.fn.KafCreateTopic, { brokers = self.brokers, topic = name, partitions = num_partitions })
 
     if not ok then
         notify.notify(data)
@@ -63,7 +58,7 @@ end
 
 ---@param name string
 function Client:delete_topic(name)
-    local ok, data = pcall(lib.delete_topic, { brokers = self.brokers, topic = name })
+    local ok, data = pcall(vim.fn.KafDeleteTopic, { brokers = self.brokers, topic = name })
 
     if ok then
         for i, topic in ipairs(self.cache_topics) do
@@ -101,10 +96,10 @@ function Client:messages()
         return {}
     end
 
-    local ok, data = pcall(lib.messages, {
+    local ok, data = pcall(vim.fn.KafMessages, {
         brokers = self.brokers,
         topic = self.selected_topic,
-        max_messages_per_partition = config.data().kafka.max_messages_per_partition,
+        -- max_messages_per_partition = config.data().kafka.max_messages_per_partition,
     })
 
     if not ok then
@@ -122,7 +117,7 @@ function Client:produce(key, value)
         return {}
     end
 
-    local ok, data = pcall(lib.produce, {
+    local ok, data = pcall(vim.fn.KafProduce, {
         brokers = self.brokers,
         topic = self.selected_topic,
         key = key,

@@ -1,15 +1,28 @@
-local has_cargo = vim.fn.executable("cargo")
-assert(has_cargo, "Unable to install kaf.nvim: required cargo to build the extension")
+local has_go = vim.fn.executable("go")
+assert(has_go, "Unable to install kaf.nvim: required 'go' to build the extension")
 
-local artifact_file = require("plenary.debug_utils").sourced_filepath()
+local artifact_file = require("kaf.utils").sourced_filepath()
 local kaf_root = vim.fn.fnamemodify(artifact_file, ":p:h")
+local kaf_go = kaf_root .. "/kaf"
 
-local target_dir = kaf_root .. "/target"
-local release_dir = target_dir .. "/release/"
-local release_file = release_dir .. "libkaf.so"
-local lib_path = kaf_root .. "/lib"
+local job_dependencies = vim.fn.jobstart({ "go", "get", "." }, {
+    cwd = kaf_go,
+    on_exit = function(_, code, _)
+        if code ~= 0 then
+            error("kaf build failed")
+        end
+    end,
+})
 
-vim.fn.system({ "cargo", "build", "--release" })
-vim.fn.mkdir(lib_path, "p")
-vim.fn.rename(release_file, lib_path .. "/libkaf.so")
-vim.fn.delete(target_dir, "rf")
+vim.fn.jobwait({ job_dependencies }, 10000)
+
+local job_build = vim.fn.jobstart({ "go", "build", "-o", "kaf" }, {
+    cwd = kaf_go,
+    on_exit = function(_, code, _)
+        if code ~= 0 then
+            error("kaf build failed")
+        end
+    end,
+})
+
+vim.fn.jobwait({ job_build }, 10000)
