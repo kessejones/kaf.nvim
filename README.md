@@ -42,12 +42,12 @@ vim.keymap.set('n', require('kaf').produce, { desc = "Produce a message into sel
 
 | Mappings | Prompt   | Action                                            |
 | -------- | -------- | ------------------------------------------------- |
-| `<CR>`   | Client   | Set selected client as default                    |
-| `<C-n>`  | Client   | Create a new client                               |
-| `<C-x>`  | Client   | Remove selected client                            |
-| `<CR>`   | Topic    | Set selected topic as default                     |
-| `<C-n>`  | Topic    | Create a new topic in this client                 |
-| `<C-x>`  | Topic    | Delete selected topic                             |
+| `<CR>`   | Clients  | Set selected client as default                    |
+| `<C-n>`  | Clients  | Create a new client                               |
+| `<C-x>`  | Clients  | Remove selected client                            |
+| `<CR>`   | Topics   | Set selected topic as default                     |
+| `<C-n>`  | Topics   | Create a new topic in this client                 |
+| `<C-x>`  | Topics   | Delete selected topic                             |
 | `<CR>`   | Messages | Open the selected message value into a new buffer |
 
 ## Contributing
