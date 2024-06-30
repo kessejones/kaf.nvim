@@ -31,11 +31,10 @@ You can configure your key mappings like this example.
 ```lua
 local telescope = require('telescope')
 
-vim.keymap.set('n', telescope.extensions.kaf.clients, { desc = "List clients entries" })
-vim.keymap.set('n', telescope.extensions.kaf.topics, { desc = "List topics from selected client" })
-vim.keymap.set('n', telescope.extensions.kaf.messages, { desc = "List messages from seleted topic and client" })
-
-vim.keymap.set('n', require('kaf').produce, { desc = "Produce a message into selected topic and client" })
+vim.keymap.set('n', '<Leader>ee', telescope.extensions.kaf.clients, { desc = "List clients entries" })
+vim.keymap.set('n', '<Leader>et', telescope.extensions.kaf.topics, { desc = "List topics from selected client" })
+vim.keymap.set('n', '<Leader>em', telescope.extensions.kaf.messages, { desc = "List messages from seleted topic and client" })
+vim.keymap.set('n', '<Leader>ep', require('kaf').produce, { desc = "Produce a message into selected topic and client" })
 ```
 
 #### Mappings
