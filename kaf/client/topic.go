@@ -69,3 +69,12 @@ func DeleteTopic(brokers []string, topic string) error {
 	_, err = admin.DeleteTopic(context.Background(), topic)
 	return err
 }
+
+func TopicPartitions(client *kgo.Client, topic string) (kadm.PartitionDetails, error) {
+	admin := kadm.NewClient(client)
+	metadata, err := admin.Metadata(context.Background(), topic)
+	if err != nil {
+		return nil, err
+	}
+	return metadata.Topics[topic].Partitions, nil
+}
