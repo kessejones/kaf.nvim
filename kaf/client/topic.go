@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"log"
 
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -77,4 +78,42 @@ func TopicPartitions(client *kgo.Client, topic string) (kadm.PartitionDetails, e
 		return nil, err
 	}
 	return metadata.Topics[topic].Partitions, nil
+}
+
+func TopicPartitionsOffset(client *kgo.Client, topic string) (map[int32]PartitionMetadataOffset, error) {
+	admin := kadm.NewClient(client)
+	ctx := context.Background()
+
+	endOffsets, err := admin.ListEndOffsets(ctx, topic)
+	if err != nil {
+		return nil, err
+	}
+
+	startOffsets, err := admin.ListStartOffsets(ctx, topic)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(endOffsets) != len(startOffsets) {
+		log.Panic("offsets are not equal")
+	}
+
+	result := make(map[int32]PartitionMetadataOffset, len(startOffsets))
+
+	startOffsets.Each(func(o kadm.ListedOffset) {
+		result[o.Partition] = PartitionMetadataOffset{
+			Id:          o.Partition,
+			StartOffset: o.Offset,
+		}
+	})
+
+	endOffsets.Each(func(o kadm.ListedOffset) {
+		item, ok := result[o.Partition]
+		if ok {
+			item.EndOffset = o.Offset
+			result[o.Partition] = item
+		}
+	})
+
+	return result, nil
 }
