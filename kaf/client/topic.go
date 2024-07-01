@@ -48,7 +48,7 @@ func GetTopics(brokers []string) ([]Topic, error) {
 	for _, detail := range topicsInternal {
 		topic := Topic{
 			Name:       detail.Topic,
-			Partitions: detail.Partitions.NumReplicas(),
+			Partitions: len(detail.Partitions),
 		}
 
 		topics = append(topics, topic)
