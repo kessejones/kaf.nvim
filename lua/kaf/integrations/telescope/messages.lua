@@ -8,6 +8,7 @@ local entry_display = require("telescope.pickers.entry_display")
 
 local manager = require("kaf.manager")
 local config = require("kaf.config")
+local notifier = require("kaf.notifier")
 
 local function messages_finder(opts)
     opts = opts or {}
@@ -84,10 +85,15 @@ return function(opts)
 
     local client = manager.current_client()
     if not client then
-        error("client is not selected")
+        notifier.notify("You need to select a client first", vim.log.levels.WARN)
         return
     end
+
     local topic_name = client.selected_topic
+    if not topic_name then
+        notifier.notify("You need to select a topic in the client " .. client.name .. " first", vim.log.levels.WARN)
+        return
+    end
 
     opts.results_title = string.format("Messages topic: %s ", topic_name)
 

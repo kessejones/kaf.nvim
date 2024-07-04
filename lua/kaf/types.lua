@@ -14,6 +14,11 @@ local M = {}
 ---@field public clients Client[]
 ---@field public selected_client string?
 
+---@class Notification
+---@field public title string?
+---@field public message string
+---@field public percentage integer?
+
 --TODO: Add the enum EventType
 M.EventType = {
     ClientSelected = "ClientSelected",

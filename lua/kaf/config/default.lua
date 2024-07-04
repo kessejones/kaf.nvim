@@ -23,7 +23,11 @@ local M = {
     integrations = {
         fidget = true,
     },
-    kafka = { max_messages_per_partition = 10 },
+    -- TODO: send this parameters to rpc process
+    kafka = {
+        max_messages_per_partition = 10,
+    },
+    confirm_on_produce_message = true,
 }
 
 return M

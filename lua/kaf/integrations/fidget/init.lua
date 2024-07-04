@@ -12,21 +12,14 @@ function M.cancel()
     end
 end
 
-function M.progress(title, message, opts)
-    opts = opts or {}
+---@param opts Notification
+function M.progress(opts)
+    opts.percentage = opts.percentage or 0
 
     if handle then
-        handle:report({
-            title = title,
-            message = message,
-            percentage = opts.percentage or 0,
-        })
+        handle:report(opts)
     else
-        handle = fp.handle.create({
-            title = title,
-            message = message,
-            percentage = 0,
-        })
+        handle = fp.handle.create(opts)
     end
 end
 
@@ -37,8 +30,9 @@ function M.finish()
     end
 end
 
-function M.notify(message)
-    fidget.notify(message)
+---@param message string
+function M.notify(message, level)
+    fidget.notify(message, level)
 end
 
 return M

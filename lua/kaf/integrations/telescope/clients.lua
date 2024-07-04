@@ -7,7 +7,7 @@ local make_entry = require("telescope.make_entry")
 local ui = require("kaf.utils.ui")
 local previwers = require("telescope.previewers")
 
-local notify = require("kaf.notify")
+local notifier = require("kaf.notifier")
 local manager = require("kaf.manager")
 
 local function prompt_new_client()
@@ -110,7 +110,7 @@ local client_actions = {
         end
         local new_data = prompt_edit_client(client.name, client.brokers)
         if new_data == nil then
-            notify.notify("Client edition canceled")
+            notifier.notify("Client edition canceled")
             return
         end
 
@@ -123,13 +123,12 @@ local client_actions = {
         if not entry then
             return
         end
-        local client_name = entry[1]
 
-        if not ui.confirm("Are you sure you want to delete " .. client_name .. "? [Y] ") then
+        if not ui.confirm("Are you sure you want to delete " .. entry.name .. "? [Y] ") then
             return
         end
 
-        manager.remove_client(client_name)
+        manager.remove_client(entry.name)
         local current_picker = action_state.get_current_picker(bufnr)
         current_picker:refresh(clients_finder(), { reset_prompt = true })
     end,

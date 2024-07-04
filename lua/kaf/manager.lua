@@ -1,6 +1,6 @@
 local Client = require("kaf.client")
 local event = require("kaf.event")
-local notify = require("kaf.notify")
+local notifier = require("kaf.notifier")
 local EventType = require("kaf.types").EventType
 
 ---@class Manager
@@ -92,7 +92,7 @@ end
 function Manager.topics(force)
     local client = Manager.current_client()
     if not client then
-        notify.notify("Client not selected")
+        notifier.notify("Client not selected")
         return {}
     end
 
@@ -106,7 +106,7 @@ end
 function Manager.messages()
     local client = Manager.current_client()
     if not client then
-        vim.notify("Client not selected")
+        notifier.notify("Client not selected")
         return {}
     end
 
@@ -134,7 +134,7 @@ end
 function Manager.create_topic(topic_name, num_partitions)
     local client = Manager.current_client()
     if not client then
-        vim.notify("Client not selected")
+        notifier.notify("Client not selected")
         return {}
     end
 
@@ -147,7 +147,7 @@ end
 function Manager.delete_topic(topic_name)
     local client = Manager.current_client()
     if not client then
-        notify.notify("Client not selected")
+        notifier.notify("Client not selected")
         return {}
     end
 
@@ -161,7 +161,7 @@ end
 function Manager.produce_message(key, value)
     local client = Manager.current_client()
     if not client then
-        notify.notify("Client not selected")
+        notifier.notify("Client not selected")
         return {}
     end
 

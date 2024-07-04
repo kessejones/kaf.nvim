@@ -7,7 +7,7 @@ local entry_display = require("telescope.pickers.entry_display")
 
 local manager = require("kaf.manager")
 local ui = require("kaf.utils.ui")
-local notify = require("kaf.notify")
+local notifier = require("kaf.notifier")
 
 local function prompt_new_topic()
     local name = vim.fn.input("Topic name: ")
@@ -79,7 +79,7 @@ local topic_actions = {
         end
         manager.select_topic(entry.value)
 
-        notify.notify("Topic '" .. entry.value .. "' selected as default")
+        notifier.notify("Topic '" .. entry.value .. "' selected as default")
 
         actions.close(bufnr)
     end,
@@ -101,7 +101,7 @@ local topic_actions = {
         end
 
         if not ui.confirm("Do you want to delete topic " .. entry.value .. "?[N]", "N") then
-            notify.notify("Topic deletion cancelled")
+            notifier.notify("Topic deletion cancelled")
             return
         end
 
@@ -111,7 +111,7 @@ local topic_actions = {
         end
     end,
     refresh = function(bufnr)
-        notify.notify("Refreshing topics list")
+        notifier.notify("Refreshing topics list")
 
         local current_picker = action_state.get_current_picker(bufnr)
         current_picker:refresh(topics_finder({ force_refresh = true }), { reset_prompt = true })
@@ -120,6 +120,12 @@ local topic_actions = {
 
 return function(opts)
     opts = opts or {}
+
+    local client = manager.current_client()
+    if not client then
+        notifier.notify("You need to select a client first", vim.log.levels.WARN)
+        return
+    end
 
     opts.results_title = "Topics"
 

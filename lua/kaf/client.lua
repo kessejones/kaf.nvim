@@ -1,5 +1,4 @@
-local notify = require("kaf.notify")
-local config = require("kaf.config")
+local notifier = require("kaf.notifier")
 
 ---@class Client
 ---@field public name string
@@ -27,7 +26,7 @@ function Client:topics(force)
     if force or #self.cache_topics == 0 then
         local ok, data = pcall(vim.fn.KafTopics, { brokers = self.brokers })
         if not ok then
-            notify.notify(data)
+            notifier.notify(data)
             return {}
         end
         self.cache_topics = data
@@ -50,7 +49,7 @@ function Client:create_topic(name, num_partitions)
     local ok, data = pcall(vim.fn.KafCreateTopic, { brokers = self.brokers, topic = name, partitions = num_partitions })
 
     if not ok then
-        notify.notify(data)
+        notifier.notify(data)
     end
 
     return ok
@@ -68,7 +67,7 @@ function Client:delete_topic(name)
             end
         end
     else
-        notify.notify(data)
+        notifier.notify(data)
     end
 
     return ok
@@ -92,7 +91,7 @@ end
 ---@return Message[]
 function Client:messages()
     if self.selected_topic == nil then
-        notify.notify("No topic selected")
+        notifier.notify("No topic selected")
         return {}
     end
 
@@ -103,7 +102,7 @@ function Client:messages()
     })
 
     if not ok then
-        notify.notify(data)
+        notifier.notify(data)
     end
 
     return data
@@ -113,7 +112,7 @@ end
 ---@param value string
 function Client:produce(key, value)
     if self.selected_topic == nil then
-        notify.notify("No topic selected")
+        notifier.notify("No topic selected")
         return {}
     end
 
@@ -125,7 +124,7 @@ function Client:produce(key, value)
     })
 
     if not ok then
-        notify.notify(data)
+        notifier.notify(data)
     end
 end
 

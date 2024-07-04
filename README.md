@@ -2,13 +2,16 @@
 
 A plugin for manager kafka topics and messages
 
+**This is an alpha software. Expect Breaking Changes!**
+
 ## Getting Started
 
 [Neovim 0.9](https://github.com/neovim/neovim/releases/tag/v0.9.5) or higher is required for `kaf.nvim` to work.
 
 ### Dependencies
 
-- [telescope](https://github.com/nvim-telescope/telescope.nvim)
+- [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
+- [fidget.nvim](https://github.com/j-hui/fidget.nvim) (Optional)
 
 ### Installation
 
@@ -19,6 +22,7 @@ return {
     'kessejones/kaf.nvim',
     dependencies = {
         "nvim-telescope/telescope.nvim",
+        "j-hui/fidget.nvim", -- optional
     },
 }
 

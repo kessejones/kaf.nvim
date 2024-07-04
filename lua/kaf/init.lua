@@ -8,6 +8,7 @@ local config = require("kaf.config")
 local event = require("kaf.event")
 local logger = require("kaf.logger")
 local register = require("kaf.register")
+local notifier = require("kaf.notifier")
 
 local function register_events()
     event.on({
@@ -21,31 +22,31 @@ local function register_events()
     end)
 
     event.on(EventType.MessagesFetching, function()
-        require("kaf.integrations.fidget").progress("Kaf", "Fetching messages")
+        notifier.progress({ title = "Kaf", message = "Fetching Messages" })
     end)
 
     event.on(EventType.MessagesFetched, function()
-        require("kaf.integrations.fidget").finish()
-        require("kaf.integrations.fidget").notify("Messages Fetched")
+        notifier.finish()
+        notifier.notify("Messages Fetched")
     end)
 
     event.on(EventType.MessageProduced, function()
-        require("kaf.integrations.fidget").notify("Message Produced")
+        notifier.notify("Message Produced")
     end)
 
     event.on(EventType.TopicsFetched, function(e)
         if e.forced then
             data.save_cache()
-            require("kaf.integrations.fidget").notify("Topics Reloaded")
+            notifier.notify("Topics Reloaded")
         end
     end)
 
     event.on(EventType.TopicCreated, function()
-        require("kaf.integrations.fidget").notify("Topic Created")
+        notifier.notify("Topic Created")
     end)
 
     event.on(EventType.TopicDeleted, function()
-        require("kaf.integrations.fidget").notify("Topic Deleted")
+        notifier.notify("Topic Deleted")
     end)
 end
 
@@ -74,6 +75,7 @@ function M.setup(opts)
 
     register.setup()
     config.setup(opts)
+    notifier.setup()
 
     local cache = data.load_cache_file()
     manager.setup(cache.clients, cache.selected_client)
@@ -85,12 +87,31 @@ end
 function M.produce(opts)
     opts = opts or {}
 
+    if config.data().confirm_on_produce_message then
+        local client = manager.current_client()
+        if not client then
+            notifier.notify("You need to select a client first", vim.log.levels.WARN)
+            return
+        end
+
+        if not client.selected_topic then
+            notifier.notify("You need to select a topic in the client " .. client.name .. " first", vim.log.levels.WARN)
+            return
+        end
+
+        local target = string.format("(%s/%s)", client.name, client.selected_topic)
+        if
+            require("kaf.utils.ui").confirm("Do you want to send this buffer to kafka " .. target .. "?[N]", "N")
+            == false
+        then
+            return
+        end
+    end
+
     local key = opts.key or nil
     if opts.ask_key then
         key = require("kaf.utils.ui").prompt("Key: ")
     end
-
-    -- TODO: maybe we also can get value from a file picked by telescope
 
     local value = require("kaf.utils.buffer").get_buffer_content()
     manager.produce_message(key, value)
