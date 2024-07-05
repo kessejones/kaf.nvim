@@ -19,6 +19,12 @@ local M = {}
 ---@field public message string
 ---@field public percentage integer?
 
+---@class ProduceOpts
+---@field public key string?
+---@field public prompt_key boolean
+---@field public value string?
+---@field public value_from_buffer boolean
+
 --TODO: Add the enum EventType
 M.EventType = {
     ClientSelected = "ClientSelected",

@@ -28,17 +28,17 @@ return {
 
 ```
 
-#### Usage
+### Usage
 
-You can configure your key mappings like this example.
+#### Options
 
 ```lua
-local telescope = require('telescope')
-
-vim.keymap.set('n', '<Leader>ee', telescope.extensions.kaf.clients, { desc = "List clients entries" })
-vim.keymap.set('n', '<Leader>et', telescope.extensions.kaf.topics, { desc = "List topics from selected client" })
-vim.keymap.set('n', '<Leader>em', telescope.extensions.kaf.messages, { desc = "List messages from seleted topic and client" })
-vim.keymap.set('n', '<Leader>ep', require('kaf').produce, { desc = "Produce a message into selected topic and client" })
+require('kaf').setup({
+    integrations = {
+        fidget = true,
+    },
+    confirm_on_produce_message = true,
+})
 ```
 
 #### Mappings
@@ -52,6 +52,29 @@ vim.keymap.set('n', '<Leader>ep', require('kaf').produce, { desc = "Produce a me
 | `<C-n>`  | Topics   | Create a new topic in this client                 |
 | `<C-x>`  | Topics   | Delete selected topic                             |
 | `<CR>`   | Messages | Open the selected message value into a new buffer |
+
+#### Example
+
+You can configure your key mappings like this example.
+
+```lua
+local kaf_telescope = require("kaf.integrations.telescope")
+
+vim.keymap.set('n', '<Leader>ee', function() kaf_telescope.clients() end, { desc = "List clients entries" })
+
+vim.keymap.set('n', '<Leader>et', function() kaf_telescope.topics() end, { desc = "List topics from selected client" })
+
+vim.keymap.set('n', '<Leader>em', function() kaf_telescope.messages() end, { desc = "List messages from seleted topic and client" })
+
+vim.keymap.set('n', '<Leader>ep', function()
+    require('kaf.api').produce({ value_from_buffer = true, })
+end, { desc = "Produce a message into selected topic and client" })
+
+```
+
+### Extras
+
+See the [API documentation](./doc/api.md) for more details
 
 ## Contributing
 

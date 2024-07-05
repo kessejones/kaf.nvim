@@ -4,7 +4,7 @@ local M = {}
 ---@return boolean
 function M.confirm(message, default)
     default = default or ""
-    local input = vim.fn.input(message)
+    local input = string.lower(vim.fn.input(message))
     return input == default or input == "y" or input == "yes"
 end
 
