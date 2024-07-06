@@ -33,11 +33,8 @@ function Client:topics(force)
             return {}
         end
         self.cache:set_topics(data)
-
-        vim.notify("update cache")
     end
 
-    vim.notify("topics")
     return self.cache.topics
 end
 
