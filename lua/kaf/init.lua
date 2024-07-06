@@ -1,5 +1,3 @@
-local EventType = require("kaf.types").EventType
-
 local M = {}
 
 local manager = require("kaf.manager")
@@ -13,40 +11,40 @@ local integrations = require("kaf.integrations")
 
 local function register_events()
     event.on({
-        EventType.ClientSelected,
-        EventType.TopicSelected,
-        EventType.ClientRemoved,
-        EventType.ClientCreated,
-        EventType.TopicSelected,
+        event.type.CLIENT_SELECTED,
+        event.type.TOPIC_SELECTED,
+        event.type.CLIENT_REMOVED,
+        event.type.CLIENT_CREATED,
+        event.type.TOPIC_SELECTED,
     }, function()
         data.save_cache()
     end)
 
-    event.on(EventType.MessagesFetching, function()
+    event.on(event.type.MESSAGES_FETCHING, function()
         notifier.progress({ title = "Kaf", message = "Fetching Messages" })
     end)
 
-    event.on(EventType.MessagesFetched, function()
+    event.on(event.type.MESSAGES_FETCHED, function()
         notifier.finish()
         notifier.notify("Messages Fetched")
     end)
 
-    event.on(EventType.MessageProduced, function()
+    event.on(event.type.MESSAGE_PRODUCED, function()
         notifier.notify("Message Produced")
     end)
 
-    event.on(EventType.TopicsFetched, function(e)
+    event.on(event.type.TOPICS_FETCHED, function(e)
         if e.forced then
             data.save_cache()
             notifier.notify("Topics Reloaded")
         end
     end)
 
-    event.on(EventType.TopicCreated, function()
+    event.on(event.type.TOPIC_CREATED, function()
         notifier.notify("Topic Created")
     end)
 
-    event.on(EventType.TopicDeleted, function()
+    event.on(event.type.TOPIC_DELETED, function()
         notifier.notify("Topic Deleted")
     end)
 end
@@ -71,6 +69,7 @@ local function register_commands()
     end, {})
 end
 
+---@param opts kaf.KafOpts
 function M.setup(opts)
     opts = opts or {}
 

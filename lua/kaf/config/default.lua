@@ -1,5 +1,6 @@
 local Job = require("kaf.utils.job")
 
+---@type kaf.TypeFormatter
 local type_formatter = setmetatable({
     json = function(text)
         local output = Job.new("jq"):run_sync(text)
@@ -10,6 +11,7 @@ local type_formatter = setmetatable({
     end,
 }, {})
 
+---@type kaf.TypeDetector
 local type_detector = setmetatable({
     json = function(text)
         local pattern = "^%s*[%[%{].*[%]%}]%s*$"
@@ -17,6 +19,7 @@ local type_detector = setmetatable({
     end,
 }, {})
 
+---@type kaf.KafOpts
 local M = {
     type_formatter = type_formatter,
     type_detector = type_detector,

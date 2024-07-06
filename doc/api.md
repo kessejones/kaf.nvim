@@ -24,3 +24,38 @@ Initialize kaf
 | Param | Type               | Desc |
 | ----- | ------------------ | ---- |
 | opts  | `kaf.KafOpts\|nil` |      |
+
+# Integrations
+
+## Telescope
+
+- [clients(opts)](#clients)
+- [topics(opts)](#topics)
+- [messages(opts)](#messages)
+
+### clients(opts)
+
+`integrations.telescope.clients(opts)` \
+List manageble clients
+
+| Param |     | Type                            | Desc |
+| ----- | --- | ------------------------------- | ---- |
+| opts  |     | `kaf.TelescopeClientsOpts\|nil` |      |
+
+### topics(opts)
+
+`integrations.telescope.topics(opts)` \
+List topics from selected client
+
+| Param |     | Type                           | Desc |
+| ----- | --- | ------------------------------ | ---- |
+| opts  |     | `kaf.TelescopeTopicsOpts\|nil` |      |
+
+### messages(opts)
+
+`integrations.telescope.messages(opts)` \
+List messages from selected client and topic
+
+| Param |     | Type                             | Desc |
+| ----- | --- | -------------------------------- | ---- |
+| opts  |     | `kaf.TelescopeMessagesOpts\|nil` |      |

@@ -5,7 +5,7 @@ local ui = require("kaf.utils.ui")
 
 local M = {}
 
----@param opts ProduceOpts
+---@param opts kaf.ProduceOpts
 function M.produce(opts)
     opts = opts or {}
 

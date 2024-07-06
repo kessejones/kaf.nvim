@@ -1,7 +1,6 @@
 local Client = require("kaf.client")
 local event = require("kaf.event")
 local notifier = require("kaf.notifier")
-local EventType = require("kaf.types").EventType
 
 ---@class Manager
 ---@field private clients table<string, Client>
@@ -20,7 +19,7 @@ function Manager.setup(clients, selected_client)
 end
 
 ---@param clients Client[]
-function Manager.add_clients(clients, internal)
+function Manager.add_clients(clients)
     for _, client in ipairs(clients) do
         Manager.add_client(client)
     end
@@ -41,7 +40,7 @@ end
 function Manager.set_client(name)
     _selected_client = name
 
-    event.emit(EventType.ClientSelected, Manager.current_client())
+    event.emit(event.type.CLIENT_SELECTED, Manager.current_client())
 end
 
 ---@param name string
@@ -54,7 +53,7 @@ function Manager.remove_client(name)
             _selected_client = nil
         end
 
-        event.emit(EventType.ClientRemoved, client)
+        event.emit(event.type.CLIENT_REMOVED, client)
     end
 end
 
@@ -83,7 +82,7 @@ end
 function Manager.create_client(name, brokers)
     local client = Client.new(name, brokers)
     Manager.add_client(client)
-    event.emit(EventType.ClientCreated)
+    event.emit(event.type.CLIENT_CREATED)
 
     return client
 end
@@ -96,9 +95,9 @@ function Manager.topics(force)
         return {}
     end
 
-    event.emit(EventType.FetchingTopics)
+    event.emit(event.type.FetchingTopics)
     local topics = client:topics(force)
-    event.emit(EventType.TopicsFetched, { forced = force })
+    event.emit(event.type.TOPICS_FETCHED, { forced = force })
     return topics
 end
 
@@ -110,9 +109,9 @@ function Manager.messages()
         return {}
     end
 
-    event.emit(EventType.MessagesFetching)
+    event.emit(event.type.MESSAGES_FETCHING)
     local messages = client:messages()
-    event.emit(EventType.MessagesFetched)
+    event.emit(event.type.MESSAGES_FETCHED)
 
     return messages
 end
@@ -126,7 +125,7 @@ function Manager.select_topic(topic_name)
     end
 
     client:select_topic(topic_name)
-    event.emit(EventType.TopicSelected)
+    event.emit(event.type.TOPIC_SELECTED)
 end
 
 ---@param topic_name string
@@ -139,7 +138,7 @@ function Manager.create_topic(topic_name, num_partitions)
     end
 
     if client:create_topic(topic_name, num_partitions) then
-        event.emit(EventType.TopicCreated)
+        event.emit(event.type.TOPIC_CREATED)
     end
 end
 
@@ -152,7 +151,7 @@ function Manager.delete_topic(topic_name)
     end
 
     if client:delete_topic(topic_name) then
-        event.emit(EventType.TopicDeleted)
+        event.emit(event.type.TOPIC_DELETED)
     end
 end
 
@@ -166,7 +165,7 @@ function Manager.produce_message(key, value)
     end
 
     client:produce(key, value)
-    event.emit(EventType.MessageProduced)
+    event.emit(event.type.MESSAGE_PRODUCED)
 end
 
 return Manager

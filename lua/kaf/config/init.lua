@@ -4,6 +4,7 @@ local M = {}
 
 local config = {}
 
+---@param opts kaf.KafOpts
 function M.setup(opts)
     opts = opts or {}
 
