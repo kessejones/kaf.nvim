@@ -1,47 +1,49 @@
 local notifier = require("kaf.notifier")
+local CacheTopic = require("kaf.cache")
 
 ---@class Client
 ---@field public name string
 ---@field public brokers string[]
----@field public cache_topics Topic[]
 ---@field public selected_topic string?
----@field public first_load boolean
+---@field private cache CacheTopic
 local Client = {}
 Client.__index = Client
 
+---@param name string
 ---@param brokers string[]
+---@param selected_topic string?
+---@param topics Topic[]
 ---@return Client
 function Client.new(name, brokers, selected_topic, topics)
     return setmetatable({
         name = name,
         brokers = brokers,
-        cache_topics = topics or {},
         selected_topic = selected_topic,
+        cache = CacheTopic.new(topics or {}),
     }, Client)
 end
 
 ---@param force boolean
 ---@return Topic[]
 function Client:topics(force)
-    if force or #self.cache_topics == 0 then
+    if force or not self.cache:valid() then
         local ok, data = pcall(vim.fn.KafTopics, { brokers = self.brokers })
         if not ok then
             notifier.notify(data)
             return {}
         end
-        self.cache_topics = data
+        self.cache:set_topics(data)
+
+        vim.notify("update cache")
     end
-    return self.cache_topics
+
+    vim.notify("topics")
+    return self.cache.topics
 end
 
 ---@param brokers string[]
 function Client:set_brokers(brokers)
     self.brokers = brokers
-end
-
----@return string[]
-function Client:cached_topics()
-    return self.cache_topics
 end
 
 ---@param name string
@@ -60,9 +62,9 @@ function Client:delete_topic(name)
     local ok, data = pcall(vim.fn.KafDeleteTopic, { brokers = self.brokers, topic = name })
 
     if ok then
-        for i, topic in ipairs(self.cache_topics) do
+        for i, topic in ipairs(self.cache.topics) do
             if topic.name == name then
-                table.remove(self.cache_topics, i)
+                table.remove(self.cache.topics, i)
                 break
             end
         end
@@ -80,7 +82,7 @@ end
 
 ---@return Topic|nil
 function Client:current_topic()
-    for _, topic in ipairs(self.cache_topics) do
+    for _, topic in ipairs(self.cache.topics) do
         if topic.name == self.selected_topic then
             return topic
         end
