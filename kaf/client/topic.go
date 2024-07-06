@@ -2,7 +2,7 @@ package client
 
 import (
 	"context"
-	"log"
+	"fmt"
 
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -31,8 +31,6 @@ func CreateTopic(brokers []string, name string, partitions int) error {
 }
 
 func GetTopics(brokers []string) ([]Topic, error) {
-	topics := make([]Topic, 0)
-
 	client, err := kgo.NewClient(kgo.SeedBrokers(brokers...))
 	if err != nil {
 		return nil, err
@@ -46,13 +44,16 @@ func GetTopics(brokers []string) ([]Topic, error) {
 		return nil, err
 	}
 
+	topics := make([]Topic, len(topicsInternal))
+	index := 0
 	for _, detail := range topicsInternal {
 		topic := Topic{
 			Name:       detail.Topic,
 			Partitions: len(detail.Partitions),
 		}
 
-		topics = append(topics, topic)
+		topics[index] = topic
+		index++
 	}
 
 	return topics, nil
@@ -84,36 +85,33 @@ func TopicPartitionsOffset(client *kgo.Client, topic string) (map[int32]Partitio
 	admin := kadm.NewClient(client)
 	ctx := context.Background()
 
-	endOffsets, err := admin.ListEndOffsets(ctx, topic)
+	listedStartOffsets, err := admin.ListStartOffsets(ctx, topic)
 	if err != nil {
 		return nil, err
 	}
 
-	startOffsets, err := admin.ListStartOffsets(ctx, topic)
+	listedEndOffsets, err := admin.ListEndOffsets(ctx, topic)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(endOffsets) != len(startOffsets) {
-		log.Panic("offsets are not equal")
+	if len(listedEndOffsets) != len(listedStartOffsets) {
+		return nil, fmt.Errorf("end_offsets and start_offsets have different length")
 	}
 
-	result := make(map[int32]PartitionMetadataOffset, len(startOffsets))
-
-	startOffsets.Each(func(o kadm.ListedOffset) {
-		result[o.Partition] = PartitionMetadataOffset{
-			Id:          o.Partition,
-			StartOffset: o.Offset,
+	result := make(map[int32]PartitionMetadataOffset, len(listedStartOffsets[topic]))
+	for partition, detailsStart := range listedStartOffsets[topic] {
+		detailsEnd, ok := listedEndOffsets[topic][partition]
+		if !ok {
+			return nil, fmt.Errorf("end offset not found for topic '%s' and partition '%d'", topic, partition)
 		}
-	})
 
-	endOffsets.Each(func(o kadm.ListedOffset) {
-		item, ok := result[o.Partition]
-		if ok {
-			item.EndOffset = o.Offset
-			result[o.Partition] = item
+		result[partition] = PartitionMetadataOffset{
+			Id:          partition,
+			StartOffset: detailsStart.Offset,
+			EndOffset:   detailsEnd.Offset,
 		}
-	})
+	}
 
 	return result, nil
 }
