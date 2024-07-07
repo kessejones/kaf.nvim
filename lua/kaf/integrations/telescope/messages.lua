@@ -17,12 +17,12 @@ local function messages_finder(opts)
     local displayer = entry_display.create({
         separator = " ",
         items = {
-            { width = 10 },
-            { width = 5 },
+            { width = 9 },
+            { width = 3 },
             { width = 6 },
             { width = 10 },
             { width = 3 },
-            { width = 5 },
+            { width = 8 },
             { width = 5 },
             { remaining = true },
         },
