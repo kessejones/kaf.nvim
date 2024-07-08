@@ -12,6 +12,7 @@ func main() {
 		p.HandleFunction(&plugin.FunctionOptions{Name: "KafProduce"}, handlers.Produce)
 		p.HandleFunction(&plugin.FunctionOptions{Name: "KafCreateTopic"}, handlers.CreateTopic)
 		p.HandleFunction(&plugin.FunctionOptions{Name: "KafDeleteTopic"}, handlers.DeleteTopic)
+		p.HandleFunction(&plugin.FunctionOptions{Name: "KafJsonFormat"}, handlers.JsonFormat)
 
 		return nil
 	})

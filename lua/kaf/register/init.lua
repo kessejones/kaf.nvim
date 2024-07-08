@@ -54,6 +54,12 @@ function M.setup()
             sync = true,
             opts = vim.empty_dict(),
         },
+        {
+            type = "function",
+            name = "KafJsonFormat",
+            sync = true,
+            opts = vim.empty_dict(),
+        },
     })
 
     loaded = true

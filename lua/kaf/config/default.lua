@@ -1,13 +1,11 @@
-local Job = require("kaf.utils.job")
-
 ---@type kaf.TypeFormatter
 local type_formatter = setmetatable({
     json = function(text)
-        local output = Job.new("jq"):run_sync(text)
-        if output.success == false then
-            return { text }
+        local ok, json_lines = pcall(vim.fn.KafJsonFormat, { value = text, indent = 4 })
+        if ok then
+            return json_lines
         end
-        return output.lines
+        return { text }
     end,
 }, {})
 
