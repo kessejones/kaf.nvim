@@ -18,12 +18,14 @@ local function messages_finder(opts)
         separator = " ",
         items = {
             { width = 9 },
+            { width = 19 },
+            { width = 9 },
             { width = 3 },
             { width = 6 },
             { width = 10 },
-            { width = 3 },
-            { width = 8 },
-            { width = 5 },
+            {},
+            {},
+            {},
             { remaining = true },
         },
     })
@@ -38,9 +40,10 @@ local function messages_finder(opts)
 
     local make_display = function(entry)
         local key = nullable_field(entry.key)
-        local value = nullable_field(entry.value)
 
         return displayer({
+            { "Timestamp", "TelescopeResultsField" },
+            { entry.time, "TelescopeResultsIdentifier" },
             { "Partition", "TelescopeResultsField" },
             { entry.partition, "TelescopeResultsNumber" },
             { "Offset", "TelescopeResultsField" },
@@ -48,7 +51,7 @@ local function messages_finder(opts)
             { "Key", "TelescopeResultsField" },
             { key, "TelescopeResultsIdentifier" },
             { "Value", "TelescopeResultsField" },
-            { value, "TelescopeResultsIdentifier" },
+            { entry.value, "TelescopeResultsIdentifier" },
         })
     end
 
