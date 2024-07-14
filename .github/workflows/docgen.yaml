@@ -1,0 +1,59 @@
+name: Docgen
+
+on: [push]
+
+env:
+  PLUGIN_NAME: Kaf.nvim
+
+jobs:
+  # reference-docs:
+  #   runs-on: ubuntu-latest
+  #   name: Generate Reference Docs
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #
+  #     - name: Generating help
+  #       run: |
+  #         curl -Lq https://github.com/numToStr/lemmy-help/releases/latest/download/lemmy-help-x86_64-unknown-linux-gnu.tar.gz | tar xz
+  #         ./lemmy-help [args] <path> > doc/${{env.PLUGIN_NAME}}.txt
+  #
+  #     - name: Commit
+  #       uses: stefanzweifel/git-auto-commit-action@v4
+  #       with:
+  #         branch: ${{ github.head_ref }}
+  #         commit_message: "chore(docs): auto-generate vimdoc"
+  #         file_pattern: doc/*.txt
+
+  readme-docs:
+    runs-on: ubuntu-latest
+    name: Pandoc to vimdoc
+    steps:
+      - uses: actions/checkout@v2
+      - name: panvimdoc
+        uses: kdheepak/panvimdoc@main
+        with:
+          vimdoc: "kaf.nvim" # Output vimdoc project name (required)
+          # The following are all optional
+          pandoc: "README.md" # Input pandoc file
+          version: "NVIM v0.10.0" # Vim version number
+          toc: true # Table of contents
+          description: "A plugin for manager kafka topics and messages" # Project description used in title (if empty, uses neovim version and current date)
+          titledatepattern: "%Y %B %d" # Pattern for the date that used in the title
+          demojify: false # Strip emojis from the vimdoc
+          dedupsubheadings: true # Add heading to subheading anchor links to ensure that subheadings are unique
+          treesitter: true # Use treesitter for highlighting codeblocks
+          ignorerawblocks: true # Ignore raw html blocks in markdown when converting to vimdoc
+          docmapping: false # Use h4 headers as mapping docs
+          docmappingprojectname: true # Use project name in tag when writing mapping docs
+          shiftheadinglevelby: 0 # Shift heading levels by specified number
+          incrementheadinglevelby: 0 # Increment heading levels by specified number
+
+      - name: Commit the Generated Help
+        uses: EndBug/add-and-commit@v9
+        if: github.event_name == 'push'
+        with:
+          add: doc/kaf.nvim.txt
+          author_name: Github Actions
+          author_email: actions@github.com
+          message: "[docgen] Update doc/kaf.nvim.txt"
+          pull: --rebase --autostash

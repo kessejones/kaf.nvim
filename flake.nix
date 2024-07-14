@@ -16,6 +16,9 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             go
+            lemmy-help
+            panvimdoc
+            act
           ];
         };
       }
