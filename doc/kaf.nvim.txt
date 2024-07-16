@@ -22,6 +22,7 @@ required for `kaf.nvim` to work.
 
 DEPENDENCIES ~
 
+- plenary.nvim <https://github.com/nvim-lua/plenary.nvim>
 - telescope.nvim <https://github.com/nvim-telescope/telescope.nvim>
 - fidget.nvim <https://github.com/j-hui/fidget.nvim> (Optional)
 
@@ -34,6 +35,7 @@ INSTALLATION ~
     return {
         'kessejones/kaf.nvim',
         dependencies = {
+            "nvim-lua/plenary.nvim",
             "nvim-telescope/telescope.nvim",
             "j-hui/fidget.nvim", -- optional
         },
