@@ -2,6 +2,8 @@
 
 A plugin for manager kafka topics and messages
 
+![Demo](./demo/demo.gif)
+
 **This is an alpha software. Expect Breaking Changes!**
 
 ## Getting Started
