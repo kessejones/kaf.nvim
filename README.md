@@ -10,6 +10,7 @@ A plugin for manager kafka topics and messages
 
 ### Dependencies
 
+- [plenary.nvim](https://github.com/nvim-lua/plenary.nvim)
 - [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
 - [fidget.nvim](https://github.com/j-hui/fidget.nvim) (Optional)
 
@@ -21,6 +22,7 @@ A plugin for manager kafka topics and messages
 return {
     'kessejones/kaf.nvim',
     dependencies = {
+        "nvim-lua/plenary.nvim",
         "nvim-telescope/telescope.nvim",
         "j-hui/fidget.nvim", -- optional
     },
