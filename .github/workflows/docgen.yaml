@@ -1,6 +1,9 @@
 name: Docgen
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
 
 env:
   PLUGIN_NAME: Kaf.nvim
